@@ -1,0 +1,17 @@
+{{template "header.html" .}}
+<div class="row">
+	<div class="col-xs-12">
+		<h2>Models</h2>
+		{{range $group := .groups}}
+			<div class="panel panel-default">
+				<div class="panel-heading">{{$group.Name}}</div>
+				<div class="list-group">
+					{{range $group.Models}}
+						<li class="list-group-item"><a href="{{$.path}}/model/{{.Slug}}/">{{.Name}}</a></li>
+					{{end}}
+				</div>
+			</div>
+		{{end}}
+	</div>
+</div>
+{{template "footer.html"}}

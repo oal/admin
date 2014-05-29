@@ -1,0 +1,40 @@
+{{template "header.html" .}}
+<div class="row">
+	<div class="col-sm-5">
+		<h2 class="page-title">{{.name}}</h2>
+	</div>
+	<div class="col-sm-7">
+		<a href="new/" class="btn btn-primary pull-right">New <strong>{{.name}}</strong></a>
+	</div>
+</div>
+<div class="row">
+	<div class="col-xs-12">
+	<div class="table-responsive">
+		<table class="table table-striped">
+		<thead>
+			<tr>
+				{{range $col := .columns}}
+					<th>{{$col}}</th>
+				{{end}}
+				<th style="width: 100px">&nbsp;</th>
+			</tr>
+		</thead>
+			<tbody>
+				{{range $result := .results}}
+					<tr>
+						{{range $i, $col := $result}}
+							{{/* First column is always ID, so skip it. */}}
+							{{if ne $i 0}}<td>{{$col}}</td>{{end}}
+						{{end}}
+						<td>
+							<a href="edit/{{index $result 0}}" class="btn btn-primary btn-block btn-sm">Edit</a>
+						</td>
+					</tr>
+				{{end}}
+			</tbody>
+		</table>
+	</div>
+
+	</div>
+</div>
+{{template "footer.html"}}

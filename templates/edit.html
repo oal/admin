@@ -1,0 +1,14 @@
+{{template "header.html" .}}
+<div class="row">
+	<div class="col-xs-12">
+		<h2>{{if eq .id 0}}New{{else}}Edit{{end}} <strong>{{.name}}</strong></h2>
+		<div class="well">
+			<form method="post">
+				{{.form}}
+				<button name="done" value="true" class="btn btn-primary" type="submit">Save</button>
+				{{if .id}}<button name="done" value="false" class="btn btn-default" type="submit">Save and continue editing</button>{{end}}
+			</form>
+		</div>
+	</div>
+</div>
+{{template "footer.html"}}

@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>{{.title}}</title>
+		<link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css">
+		<style>
+			body {
+				padding-top: 75px;
+			}
+
+			.page-title {
+				margin-top: 0;
+			}
+		</style>
+	</head>
+	<body>
+		<div class="container">
+			<div class="navbar navbar-default navbar-fixed-top">
+				<div class="container-fluid">
+					<div class="navbar-header">
+						<button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+							<span class="sr-only">Toggle navigation</span>
+							<span class="icon-bar"></span>
+							<span class="icon-bar"></span>
+							<span class="icon-bar"></span>
+						</button>
+						<a class="navbar-brand" href="{{.path}}">{{.title}}</a>
+					</div>
+					<div class="navbar-collapse collapse">
+						<!--<ul class="nav navbar-nav">
+							<li class="active"><a href="#">Home</a></li>
+						</ul>-->
+						<ul class="nav navbar-nav navbar-right">
+							<li><a href="#">Log out</a></li>
+						</ul>
+					</div>
+				</div>
+			</div>
