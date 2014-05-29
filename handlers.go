@@ -78,6 +78,7 @@ func (a *Admin) handleEdit(rw http.ResponseWriter, req *http.Request) {
 		}
 		data, err = a.querySingleModel(model, id)
 		if err != nil {
+			fmt.Println(err)
 			http.NotFound(rw, req)
 			return
 		}

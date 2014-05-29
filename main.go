@@ -105,18 +105,22 @@ func (g *modelGroup) RegisterModel(mdl interface{}) error {
 			continue
 		}
 
-		//field := ind.Field(i)
+		fieldName := field.Name
+		if len(field.Type.Name()) == 0 {
+			fieldName += "Id"
+		}
+
 		var tableField string
 		if g.admin.NameTransform != nil {
-			tableField = g.admin.NameTransform(field.Name)
+			tableField = g.admin.NameTransform(fieldName)
 		} else {
 			tableField = field.Name
 		}
 
 		modelField := &modelField{
-			name:       field.Name,
+			name:       fieldName,
 			columnName: tableField,
-			field:      &TextField{Name: field.Name},
+			field:      &TextField{Name: fieldName},
 		}
 
 		tagVals := strings.Split(tag, ",")
@@ -245,7 +249,7 @@ func (a *Admin) querySingleModel(mdl *model, id int) ([]string, error) {
 		dest[i] = &rawResult[i]
 	}
 
-	q := fmt.Sprintf("SELECT id, %v FROM %v WHERE id = ?", strings.Join(mdl.fieldNames(), ","), mdl.tableName)
+	q := fmt.Sprintf("SELECT id, %v FROM %v WHERE id = ?", strings.Join(mdl.tableColumns(), ","), mdl.tableName)
 	err := a.db.QueryRow(q, id).Scan(dest...)
 	if err != nil {
 		return nil, err
