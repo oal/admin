@@ -13,9 +13,9 @@ import (
 	"strings"
 )
 
-var templates = template.Must(template.ParseGlob(
+var templates, _ = template.ParseGlob(
 	"admin/templates/*.html",
-))
+)
 
 type Admin struct {
 	Router        *mux.Router

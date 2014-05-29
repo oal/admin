@@ -5,9 +5,9 @@ import (
 	"io"
 )
 
-var fieldTemplates = template.Must(template.ParseGlob(
+var fieldTemplates, _ = template.ParseGlob(
 	"admin/templates/fields/*.html",
-))
+)
 
 type Field interface {
 	Render(io.Writer, interface{})

@@ -1,7 +1,6 @@
 package admin
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 )
@@ -15,10 +14,12 @@ func parseInt(s string) (int, error) {
 }
 
 // Parse admin tags used in model structs.
+// TODO: Report errors
 func parseTag(s string) (map[string]string, error) {
 	res := map[string]string{}
 
 	inQuotes := false
+	quotedVal := false
 	inKey := true
 
 	var key string
@@ -35,28 +36,38 @@ func parseTag(s string) (map[string]string, error) {
 			inKey = !inKey
 			key = s[start:i]
 			start = i + 1
-			fmt.Println(key)
 		} else if c == '\'' && s[i-1] != '\'' {
 			// For multi word values
 			inQuotes = !inQuotes
 			if inQuotes {
 				start += 1
 			}
-			fmt.Println("QUotes", inQuotes)
+			quotedVal = true
 		}
 		if (c == ' ' || i == len(s)-1) && !inQuotes {
 			// Insert key and value. If only a key was found, insert as key with empty value.
 			key = strings.TrimSpace(key)
-			val := s[start:i]
-			fmt.Println(val, len(val))
+
+			// If value is in quotes, end it one character earlier
+			var end int
+			if quotedVal {
+				end = i
+			} else {
+				end = i + 1
+			}
+
+			val := strings.TrimSpace(s[start:end])
 			if len(key) == 0 {
 				res[strings.TrimSpace(val)] = ""
 			} else {
 				res[key] = val
 			}
+
+			// Reset before starting to look for next pair
 			start = i + 1
 			key = ""
 			inKey = true
+			quotedVal = false
 		}
 	}
 
