@@ -43,6 +43,8 @@ func Setup(admin *Admin) (*Admin, error) {
 		return nil, errors.New("Username and/or password is missing")
 	}
 
+	admin.sessions = map[string]*session{}
+
 	db, err := sql.Open("sqlite3", admin.Database)
 	if err != nil {
 		return nil, err
@@ -54,10 +56,10 @@ func Setup(admin *Admin) (*Admin, error) {
 
 	sr := admin.Router.PathPrefix(admin.Path).Subrouter()
 	sr.StrictSlash(true)
-	sr.HandleFunc("/", admin.handleIndex)
-	sr.HandleFunc("/model/{slug}/", admin.handleList)
-	sr.HandleFunc("/model/{slug}/new/", admin.handleEdit)
-	sr.HandleFunc("/model/{slug}/edit/{id}/", admin.handleEdit)
+	sr.HandleFunc("/", admin.handlerWrapper(admin.handleIndex))
+	sr.HandleFunc("/model/{slug}/", admin.handlerWrapper(admin.handleList))
+	sr.HandleFunc("/model/{slug}/new/", admin.handlerWrapper(admin.handleEdit))
+	sr.HandleFunc("/model/{slug}/edit/{id}/", admin.handlerWrapper(admin.handleEdit))
 	return admin, nil
 }
 

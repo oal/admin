@@ -13,6 +13,10 @@ import (
 func (a *Admin) render(rw http.ResponseWriter, tmpl string, ctx map[string]interface{}) {
 	ctx["title"] = a.Title
 	ctx["path"] = a.Path
+	if _, ok := ctx["anonymous"]; !ok {
+		fmt.Println(ctx["anonymous"])
+		ctx["anonymous"] = false
+	}
 
 	err := templates.ExecuteTemplate(rw, tmpl, ctx)
 	if err != nil {
@@ -20,9 +24,29 @@ func (a *Admin) render(rw http.ResponseWriter, tmpl string, ctx map[string]inter
 	}
 }
 
+// handlerWrapper is used to redirect to index / log in page.
+func (a *Admin) handlerWrapper(h http.HandlerFunc) http.HandlerFunc {
+	return func(rw http.ResponseWriter, req *http.Request) {
+		if !a.isLoggedIn(req) && req.URL.Path != a.Path+"/" {
+			http.Redirect(rw, req, a.Path, 302)
+			return
+		}
+		h.ServeHTTP(rw, req)
+	}
+}
+
 func (a *Admin) handleIndex(rw http.ResponseWriter, req *http.Request) {
 	if !a.isLoggedIn(req) {
-		a.render(rw, "login.html", map[string]interface{}{})
+		if req.Method == "POST" {
+			req.ParseForm()
+			ok := a.logIn(rw, req.Form.Get("username"), req.Form.Get("password"))
+			if ok {
+				http.Redirect(rw, req, a.Path, 302)
+			}
+		}
+		a.render(rw, "login.html", map[string]interface{}{
+			"anonymous": true,
+		})
 		return
 	}
 	a.render(rw, "index.html", map[string]interface{}{

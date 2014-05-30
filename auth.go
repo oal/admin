@@ -1,7 +1,6 @@
 package admin
 
 import (
-	"fmt"
 	"net/http"
 	"time"
 )
@@ -12,8 +11,9 @@ func (a *Admin) isLoggedIn(req *http.Request) bool {
 		return false
 	}
 
-	fmt.Println(cookie.String())
-	return true
+	// TODO: Expire sessions
+	_, ok := a.sessions[cookie.Value]
+	return ok
 }
 
 func (a *Admin) logIn(rw http.ResponseWriter, username, password string) bool {
