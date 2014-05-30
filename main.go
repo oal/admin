@@ -23,6 +23,8 @@ type Admin struct {
 	Database      string
 	Title         string
 	NameTransform func(string) string
+	Username      string
+	Password      string
 	db            *sql.DB
 	models        map[string]*model
 	modelGroups   []*modelGroup
@@ -33,12 +35,15 @@ func Setup(admin *Admin) (*Admin, error) {
 		admin.Title = "Admin"
 	}
 
+	if len(admin.Username) == 0 || len(admin.Password) == 0 {
+		return nil, errors.New("Username and/or password is missing")
+	}
+
 	db, err := sql.Open("sqlite3", admin.Database)
 	if err != nil {
 		return nil, err
 	}
 	admin.db = db
-	fmt.Println("DB loaded")
 
 	admin.models = map[string]*model{}
 	admin.modelGroups = []*modelGroup{}
