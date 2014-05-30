@@ -5,15 +5,16 @@ import (
 	"time"
 )
 
-func (a *Admin) isLoggedIn(req *http.Request) bool {
+func (a *Admin) getUserSession(req *http.Request) *session {
 	cookie, err := req.Cookie("admin")
 	if err != nil {
-		return false
+		return nil
 	}
 
-	// TODO: Expire sessions
-	_, ok := a.sessions[cookie.Value]
-	return ok
+	if sess, ok := a.sessions[cookie.Value]; ok {
+		return sess
+	}
+	return nil
 }
 
 func (a *Admin) logIn(rw http.ResponseWriter, username, password string) bool {
@@ -44,12 +45,17 @@ func (s *session) addMessage(class, text string) {
 }
 
 func (s *session) getMessages() []*flashMessage {
+	// If empty, there's no need to create a new slice.
+	if len(s.messages) == 0 {
+		return s.messages
+	}
+
 	messages := s.messages
 	s.messages = []*flashMessage{}
 	return messages
 }
 
 type flashMessage struct {
-	class string
-	text  string
+	Class string
+	Text  string
 }

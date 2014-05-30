@@ -10,12 +10,17 @@ import (
 	"strings"
 )
 
-func (a *Admin) render(rw http.ResponseWriter, tmpl string, ctx map[string]interface{}) {
+func (a *Admin) render(rw http.ResponseWriter, req *http.Request, tmpl string, ctx map[string]interface{}) {
 	ctx["title"] = a.Title
 	ctx["path"] = a.Path
 	if _, ok := ctx["anonymous"]; !ok {
 		fmt.Println(ctx["anonymous"])
 		ctx["anonymous"] = false
+	}
+
+	sess := a.getUserSession(req)
+	if sess != nil {
+		ctx["messages"] = sess.getMessages()
 	}
 
 	err := templates.ExecuteTemplate(rw, tmpl, ctx)
@@ -27,7 +32,7 @@ func (a *Admin) render(rw http.ResponseWriter, tmpl string, ctx map[string]inter
 // handlerWrapper is used to redirect to index / log in page.
 func (a *Admin) handlerWrapper(h http.HandlerFunc) http.HandlerFunc {
 	return func(rw http.ResponseWriter, req *http.Request) {
-		if !a.isLoggedIn(req) && req.URL.Path != a.Path+"/" {
+		if a.getUserSession(req) == nil && req.URL.Path != a.Path+"/" {
 			http.Redirect(rw, req, a.Path, 302)
 			return
 		}
@@ -36,7 +41,7 @@ func (a *Admin) handlerWrapper(h http.HandlerFunc) http.HandlerFunc {
 }
 
 func (a *Admin) handleIndex(rw http.ResponseWriter, req *http.Request) {
-	if !a.isLoggedIn(req) {
+	if a.getUserSession(req) == nil {
 		if req.Method == "POST" {
 			req.ParseForm()
 			ok := a.logIn(rw, req.Form.Get("username"), req.Form.Get("password"))
@@ -44,12 +49,12 @@ func (a *Admin) handleIndex(rw http.ResponseWriter, req *http.Request) {
 				http.Redirect(rw, req, a.Path, 302)
 			}
 		}
-		a.render(rw, "login.html", map[string]interface{}{
+		a.render(rw, req, "login.html", map[string]interface{}{
 			"anonymous": true,
 		})
 		return
 	}
-	a.render(rw, "index.html", map[string]interface{}{
+	a.render(rw, req, "index.html", map[string]interface{}{
 		"groups": a.modelGroups,
 	})
 }
@@ -71,7 +76,7 @@ func (a *Admin) handleList(rw http.ResponseWriter, req *http.Request) {
 	}
 	fmt.Println(results)
 
-	a.render(rw, "list.html", map[string]interface{}{
+	a.render(rw, req, "list.html", map[string]interface{}{
 		"name":    model.Name,
 		"slug":    slug,
 		"columns": model.listColumns(),
@@ -117,7 +122,7 @@ func (a *Admin) handleEdit(rw http.ResponseWriter, req *http.Request) {
 	var buf bytes.Buffer
 	model.renderForm(&buf, data)
 
-	a.render(rw, "edit.html", map[string]interface{}{
+	a.render(rw, req, "edit.html", map[string]interface{}{
 		"id":   id,
 		"name": model.Name,
 		"form": template.HTML(buf.String()),
@@ -181,6 +186,9 @@ func (a *Admin) handleSave(rw http.ResponseWriter, req *http.Request) {
 		fmt.Println(err)
 		return
 	}
+
+	sess := a.getUserSession(req)
+	sess.addMessage("success", fmt.Sprintf("%v has been saved.", model.Name))
 
 	if req.Form.Get("done") == "true" {
 		http.Redirect(rw, req, a.modelURL(slug, ""), 302)
