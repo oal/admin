@@ -88,7 +88,7 @@ func (a *Admin) handleEdit(rw http.ResponseWriter, req *http.Request) {
 
 	// Render form and template
 	var buf bytes.Buffer
-	model.render(&buf, data)
+	model.renderForm(&buf, data)
 
 	a.render(rw, "edit.html", map[string]interface{}{
 		"id":   id,

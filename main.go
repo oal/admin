@@ -28,28 +28,28 @@ type Admin struct {
 	modelGroups   []*modelGroup
 }
 
-func (a *Admin) Serve() error {
-	if len(a.Title) == 0 {
-		a.Title = "Admin"
+func Setup(admin *Admin) (*Admin, error) {
+	if len(admin.Title) == 0 {
+		admin.Title = "Admin"
 	}
 
-	db, err := sql.Open("sqlite3", a.Database)
+	db, err := sql.Open("sqlite3", admin.Database)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	a.db = db
+	admin.db = db
 	fmt.Println("DB loaded")
 
-	a.models = map[string]*model{}
-	a.modelGroups = []*modelGroup{}
+	admin.models = map[string]*model{}
+	admin.modelGroups = []*modelGroup{}
 
-	sr := a.Router.PathPrefix(a.Path).Subrouter()
+	sr := admin.Router.PathPrefix(admin.Path).Subrouter()
 	sr.StrictSlash(true)
-	sr.HandleFunc("/", a.handleIndex)
-	sr.HandleFunc("/model/{slug}/", a.handleList)
-	sr.HandleFunc("/model/{slug}/new/", a.handleEdit)
-	sr.HandleFunc("/model/{slug}/edit/{id}/", a.handleEdit)
-	return nil
+	sr.HandleFunc("/", admin.handleIndex)
+	sr.HandleFunc("/model/{slug}/", admin.handleList)
+	sr.HandleFunc("/model/{slug}/new/", admin.handleEdit)
+	sr.HandleFunc("/model/{slug}/edit/{id}/", admin.handleEdit)
+	return admin, nil
 }
 
 func (a *Admin) Group(name string) (*modelGroup, error) {
@@ -100,16 +100,26 @@ func (g *modelGroup) RegisterModel(mdl interface{}) error {
 
 	for i := 0; i < ind.NumField(); i++ {
 		field := t.Elem().Field(i)
+		fieldType := field.Type
+		kind := fieldType.Kind()
 		tag := field.Tag.Get("admin")
 		if tag == "-" {
 			continue
 		}
 
+		// Parse key=val / key options from struct tag, used for configuration later
+		tagMap, err := parseTag(tag)
+		if err != nil {
+			panic(err)
+		}
+
+		// Expect pointers to be foreignkeys and foreignkeys to have the form Field[Id]
 		fieldName := field.Name
-		if len(field.Type.Name()) == 0 {
+		if kind == reflect.Ptr {
 			fieldName += "Id"
 		}
 
+		// Transform struct keys to DB column names if needed
 		var tableField string
 		if g.admin.NameTransform != nil {
 			tableField = g.admin.NameTransform(fieldName)
@@ -117,18 +127,31 @@ func (g *modelGroup) RegisterModel(mdl interface{}) error {
 			tableField = field.Name
 		}
 
+		// Auto find widget
+		var widget Widget
+		fmt.Println(kind)
+		switch kind {
+		case reflect.String:
+			widget = &TextWidget{}
+		default:
+			fmt.Println("NOOO")
+			widget = &TextWidget{}
+		}
+
+		// Read relevant config options from the tagMap
+		err = widget.Configure(tagMap)
+		if err != nil {
+			panic(err)
+		}
+
 		modelField := &modelField{
 			name:       fieldName,
 			columnName: tableField,
-			field:      &TextField{Name: fieldName},
+			field:      widget,
 		}
 
-		tagVals := strings.Split(tag, ",")
-		for _, tag := range tagVals {
-			switch tag {
-			case "list":
-				modelField.list = true
-			}
+		if _, ok := tagMap["list"]; ok {
+			modelField.list = true
 		}
 
 		am.fields = append(am.fields, modelField)
@@ -147,11 +170,23 @@ type model struct {
 	instance  interface{}
 }
 
+func (m *model) renderForm(w io.Writer, data []string) {
+	hasData := len(data) == len(m.fieldNames())
+	var val string
+	for i, fieldName := range m.fieldNames() {
+		if hasData {
+			val = data[i]
+		}
+		field := m.fieldByName(fieldName)
+		field.field.Render(w, field.name, val)
+	}
+}
+
 type modelField struct {
 	name       string
 	columnName string
 	list       bool
-	field      Field
+	field      Widget
 }
 
 func (m *model) fieldNames() []string {
@@ -192,24 +227,13 @@ func (m *model) listTableColumns() []string {
 	return names
 }
 
-func (m *model) fieldByName(name string) Field {
+func (m *model) fieldByName(name string) *modelField {
 	for _, field := range m.fields {
 		if field.name == name {
-			return field.field
+			return field
 		}
 	}
 	return nil
-}
-
-func (m *model) render(w io.Writer, data []string) {
-	hasData := len(data) == len(m.fieldNames())
-	var val string
-	for i, fieldName := range m.fieldNames() {
-		if hasData {
-			val = data[i]
-		}
-		m.fieldByName(fieldName).Render(w, val)
-	}
 }
 
 func (a *Admin) modelURL(slug, action string) string {

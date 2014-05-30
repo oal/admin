@@ -13,7 +13,7 @@ func parseInt(s string) (int, error) {
 	return int(i64), nil
 }
 
-// Parse admin tags used in model structs.
+// parseTag parses admin tags used in model structs.
 // TODO: Report errors
 func parseTag(s string) (map[string]string, error) {
 	res := map[string]string{}

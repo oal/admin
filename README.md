@@ -14,14 +14,17 @@ Symlink / copy templates (they should be accessible from your-project/admin/temp
 Activate like this:
 
 	router := mux.NewRouter()
-	a := &admin.Admin{
+	a, err := admin.Setup(&admin.Admin{
 		Title:         "My admin panel",
 		Router:        router,
 		Path:          "/admin",
 		Database:      "db.sqlite",
 		NameTransform: snakeString,
+	})
+	if err != nil {
+		panic(err)
 	}
-	a.Serve()
+
 	g, err := a.Group("Main")
 	if err != nil {
 		panic(err)
