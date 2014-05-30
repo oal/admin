@@ -4,36 +4,20 @@ import (
 	"errors"
 	"html/template"
 	"io"
+	"time"
 )
 
 var fieldTemplates, _ = template.ParseGlob(
 	"admin/templates/fields/*.html",
 )
 
-type Field interface {
-	Render(io.Writer, interface{})
-	Validate(interface{}) (interface{}, error)
-}
-
-type TextField struct {
-	Name string
-}
-
-func (b TextField) Render(w io.Writer, val interface{}) {
-	fieldTemplates.ExecuteTemplate(w, "TextField.html", map[string]interface{}{
-		"name":  b.Name,
-		"value": val,
-	})
-}
-func (b TextField) Validate(val interface{}) (interface{}, error) {
-	return val, nil
-}
-
 type Widget interface {
 	Configure(map[string]string) error
 	Render(io.Writer, string, interface{})
 	Validate(string) (interface{}, error)
 }
+
+// Text widget
 
 type TextWidget struct {
 	isTextarea bool
@@ -69,4 +53,72 @@ func (t *TextWidget) Validate(val string) (interface{}, error) {
 		return nil, errors.New("Value is too long")
 	}
 	return val, nil
+}
+
+// Number widget
+
+type NumberWidget struct {
+}
+
+func (n *NumberWidget) Configure(tagMap map[string]string) error {
+	return nil
+}
+
+func (n *NumberWidget) Render(w io.Writer, name string, val interface{}) {
+	fieldTemplates.ExecuteTemplate(w, "Number.html", map[string]interface{}{
+		"name":  name,
+		"value": val,
+	})
+}
+func (n *NumberWidget) Validate(val string) (interface{}, error) {
+	num, err := parseInt(val)
+	if err != nil {
+		return nil, err
+	}
+	return num, nil
+}
+
+// URL widget
+
+type URLWidget struct {
+}
+
+func (n *URLWidget) Configure(tagMap map[string]string) error {
+	return nil
+}
+
+func (n *URLWidget) Render(w io.Writer, name string, val interface{}) {
+	fieldTemplates.ExecuteTemplate(w, "URL.html", map[string]interface{}{
+		"name":  name,
+		"value": val,
+	})
+}
+func (n *URLWidget) Validate(val string) (interface{}, error) {
+	return val, nil
+}
+
+// Time widget
+
+type TimeWidget struct {
+	Format string
+}
+
+func (n *TimeWidget) Configure(tagMap map[string]string) error {
+	n.Format = "02.01.2006"
+	return nil
+}
+
+func (n *TimeWidget) Render(w io.Writer, name string, val interface{}) {
+	fieldTemplates.ExecuteTemplate(w, "Time.html", map[string]interface{}{
+		"name":   name,
+		"format": n.Format,
+		"value":  val,
+	})
+}
+func (n *TimeWidget) Validate(val string) (interface{}, error) {
+	t, err := time.Parse(n.Format, val)
+	if err != nil {
+		return nil, err
+	}
+	return t, nil
 }

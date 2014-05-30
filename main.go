@@ -127,16 +127,30 @@ func (g *modelGroup) RegisterModel(mdl interface{}) error {
 			tableField = field.Name
 		}
 
-		// Auto find widget
 		var widget Widget
 		fmt.Println(kind)
-		switch kind {
-		case reflect.String:
-			widget = &TextWidget{}
-		default:
-			fmt.Println("NOOO")
-			widget = &TextWidget{}
+		if widgetType, ok := tagMap["widget"]; ok {
+			switch widgetType {
+			case "url":
+				widget = &URLWidget{}
+			default:
+				widget = &TextWidget{}
+			}
+		} else {
+			switch kind {
+			case reflect.String:
+				widget = &TextWidget{}
+			case reflect.Int:
+				widget = &NumberWidget{}
+			case reflect.Struct:
+				widget = &TimeWidget{}
+			default:
+				fmt.Println("NOOO")
+				widget = &TextWidget{}
+			}
 		}
+
+		// Auto find widget
 
 		// Read relevant config options from the tagMap
 		err = widget.Configure(tagMap)

@@ -140,7 +140,13 @@ func (a *Admin) handleSave(rw http.ResponseWriter, req *http.Request) {
 	// Get data from POST and fill a slice
 	data := make([]interface{}, numFields)
 	for i := 0; i < numFields; i++ {
-		data[i] = req.Form.Get(model.fieldNames()[i])
+		fieldName := model.fieldByName(model.fieldNames()[i])
+		val, err := fieldName.field.Validate(req.Form.Get(model.fieldNames()[i]))
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		data[i] = val
 	}
 
 	_, err = a.db.Exec(q, data...)
