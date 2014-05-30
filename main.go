@@ -184,9 +184,9 @@ type model struct {
 	instance  interface{}
 }
 
-func (m *model) renderForm(w io.Writer, data []string) {
+func (m *model) renderForm(w io.Writer, data []interface{}) {
 	hasData := len(data) == len(m.fieldNames())
-	var val string
+	var val interface{}
 	for i, fieldName := range m.fieldNames() {
 		if hasData {
 			val = data[i]

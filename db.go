@@ -2,11 +2,12 @@ package admin
 
 import (
 	"fmt"
+	"reflect"
 	"strings"
 )
 
 // queryModel is used in list view to display all rows.
-func (a *Admin) queryModel(mdl *model) ([][]string, error) {
+func (a *Admin) queryModel(mdl *model) ([][]interface{}, error) {
 	q := fmt.Sprintf("SELECT id, %v FROM %v", strings.Join(mdl.listTableColumns(), ","), mdl.tableName)
 	rows, err := a.db.Query(q)
 	if err != nil {
@@ -14,7 +15,7 @@ func (a *Admin) queryModel(mdl *model) ([][]string, error) {
 	}
 
 	numCols := len(mdl.listTableColumns()) + 1
-	results := [][]string{}
+	results := [][]interface{}{}
 
 	for rows.Next() {
 		result, err := scanRow(numCols, rows)
@@ -28,7 +29,7 @@ func (a *Admin) queryModel(mdl *model) ([][]string, error) {
 }
 
 // querySingleModel is used in edit view.
-func (a *Admin) querySingleModel(mdl *model, id int) ([]string, error) {
+func (a *Admin) querySingleModel(mdl *model, id int) ([]interface{}, error) {
 	numCols := len(mdl.fieldNames()) + 1
 	q := fmt.Sprintf("SELECT id, %v FROM %v WHERE id = ?", strings.Join(mdl.tableColumns(), ","), mdl.tableName)
 	row := a.db.QueryRow(q, id)
@@ -47,11 +48,12 @@ type MultiScanner interface {
 }
 
 // scanRow loads all data from a row into a string slice.
-func scanRow(numCols int, scanner MultiScanner) ([]string, error) {
-	rawResult := make([][]byte, numCols)
+func scanRow(numCols int, scanner MultiScanner) ([]interface{}, error) {
+	// We can only scan into pointers, so create result and destination slices
+	result := make([]interface{}, numCols)
 	dest := make([]interface{}, numCols)
-	for i, _ := range rawResult {
-		dest[i] = &rawResult[i]
+	for i, _ := range result {
+		dest[i] = &result[i]
 	}
 
 	err := scanner.Scan(dest...)
@@ -59,13 +61,11 @@ func scanRow(numCols int, scanner MultiScanner) ([]string, error) {
 		return nil, err
 	}
 
-	result := make([]string, numCols)
-
-	for i, raw := range rawResult {
-		if raw == nil {
-			result[i] = "\\N"
-		} else {
-			result[i] = string(raw)
+	// These are *interface{}, so get the interface{} and check if we can convert byte slice to string
+	for i := 0; i < numCols; i++ {
+		val := reflect.ValueOf(dest[i]).Elem().Interface()
+		if str, ok := val.([]uint8); ok {
+			result[i] = string(str)
 		}
 	}
 

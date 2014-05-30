@@ -109,10 +109,14 @@ func (n *TimeWidget) Configure(tagMap map[string]string) error {
 }
 
 func (n *TimeWidget) Render(w io.Writer, name string, val interface{}) {
+	formatted := ""
+	if t, ok := val.(time.Time); ok {
+		formatted = t.Format(n.Format)
+	}
 	fieldTemplates.ExecuteTemplate(w, "Time.html", map[string]interface{}{
 		"name":   name,
 		"format": n.Format,
-		"value":  val,
+		"value":  formatted,
 	})
 }
 func (n *TimeWidget) Validate(val string) (interface{}, error) {

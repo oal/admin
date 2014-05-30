@@ -67,7 +67,7 @@ func (a *Admin) handleEdit(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	// Get model data
-	var data []string
+	var data []interface{}
 	var id int
 	if idStr, ok := vars["id"]; ok {
 		id64, err := strconv.ParseInt(idStr, 10, 64)
