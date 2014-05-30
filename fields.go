@@ -4,6 +4,7 @@ import (
 	"errors"
 	"html/template"
 	"io"
+	"net/url"
 	"time"
 )
 
@@ -94,6 +95,10 @@ func (n *URLWidget) Render(w io.Writer, name string, val interface{}) {
 	})
 }
 func (n *URLWidget) Validate(val string) (interface{}, error) {
+	_, err := url.Parse(val)
+	if err != nil {
+		return nil, err
+	}
 	return val, nil
 }
 
