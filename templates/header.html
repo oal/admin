@@ -27,12 +27,14 @@
 						<a class="navbar-brand" href="{{.path}}">{{.title}}</a>
 					</div>
 					<div class="navbar-collapse collapse">
+						{{if .loggedIn}}
 						<!--<ul class="nav navbar-nav">
 							<li class="active"><a href="#">Home</a></li>
 						</ul>-->
 						<ul class="nav navbar-nav navbar-right">
 							<li><a href="#">Log out</a></li>
 						</ul>
+						{{end}}
 					</div>
 				</div>
 			</div>

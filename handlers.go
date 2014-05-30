@@ -21,7 +21,10 @@ func (a *Admin) render(rw http.ResponseWriter, tmpl string, ctx map[string]inter
 }
 
 func (a *Admin) handleIndex(rw http.ResponseWriter, req *http.Request) {
-	fmt.Println(a.modelGroups)
+	if !a.isLoggedIn(req) {
+		a.render(rw, "login.html", map[string]interface{}{})
+		return
+	}
 	a.render(rw, "index.html", map[string]interface{}{
 		"groups": a.modelGroups,
 	})

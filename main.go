@@ -23,13 +23,17 @@ type Admin struct {
 	Database      string
 	Title         string
 	NameTransform func(string) string
-	Username      string
-	Password      string
-	db            *sql.DB
-	models        map[string]*model
-	modelGroups   []*modelGroup
+
+	Username string
+	Password string
+	sessions map[string]*session
+
+	db          *sql.DB
+	models      map[string]*model
+	modelGroups []*modelGroup
 }
 
+// Setup registers page handlers and enables the admin.
 func Setup(admin *Admin) (*Admin, error) {
 	if len(admin.Title) == 0 {
 		admin.Title = "Admin"
@@ -57,6 +61,8 @@ func Setup(admin *Admin) (*Admin, error) {
 	return admin, nil
 }
 
+// Group adds a model group to the admin front page.
+// Use this to organize your models.
 func (a *Admin) Group(name string) (*modelGroup, error) {
 	if a.models == nil {
 		return nil, errors.New("Must call .Serve() before adding groups and registering models")
@@ -81,6 +87,7 @@ type modelGroup struct {
 	Models []*model
 }
 
+// RegisterModel adds a model to a model group.
 func (g *modelGroup) RegisterModel(mdl interface{}) error {
 	t := reflect.TypeOf(mdl)
 
