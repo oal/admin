@@ -14,16 +14,21 @@ var fieldTemplates, _ = template.ParseGlob(
 
 type Widget interface {
 	Configure(map[string]string) error
-	Render(io.Writer, string, interface{}, string)
+	Render(io.Writer, interface{}, string)
 	Validate(string) (interface{}, error)
 	SetLabel(string)
 	GetLabel() string
 	SetName(string)
+	GetName() string
 }
 
 type BaseWidget struct {
 	name  string
 	label string
+}
+
+func (b *BaseWidget) Configure(tagMap map[string]string) error {
+	return nil
 }
 
 func (b *BaseWidget) SetLabel(label string) {
@@ -36,6 +41,10 @@ func (b *BaseWidget) GetLabel() string {
 
 func (b *BaseWidget) SetName(name string) {
 	b.name = name
+}
+
+func (b *BaseWidget) GetName() string {
+	return b.name
 }
 
 // Text widget
@@ -60,13 +69,13 @@ func (t *TextWidget) Configure(tagMap map[string]string) error {
 	return nil
 }
 
-func (t *TextWidget) Render(w io.Writer, name string, val interface{}, err string) {
+func (t *TextWidget) Render(w io.Writer, val interface{}, err string) {
 	tmpl := "TextField.html"
 	if t.isTextarea {
 		tmpl = "Textarea.html"
 	}
 	fieldTemplates.ExecuteTemplate(w, tmpl, map[string]interface{}{
-		"name":  name,
+		"name":  t.GetName(),
 		"value": val,
 		"label": t.GetLabel(),
 		"err":   err,
@@ -85,13 +94,9 @@ type NumberWidget struct {
 	*BaseWidget
 }
 
-func (n *NumberWidget) Configure(tagMap map[string]string) error {
-	return nil
-}
-
-func (n *NumberWidget) Render(w io.Writer, name string, val interface{}, err string) {
+func (n *NumberWidget) Render(w io.Writer, val interface{}, err string) {
 	fieldTemplates.ExecuteTemplate(w, "Number.html", map[string]interface{}{
-		"name":  name,
+		"name":  n.GetName(),
 		"value": val,
 		"label": n.GetLabel(),
 		"error": err,
@@ -111,13 +116,9 @@ type URLWidget struct {
 	*BaseWidget
 }
 
-func (n *URLWidget) Configure(tagMap map[string]string) error {
-	return nil
-}
-
-func (n *URLWidget) Render(w io.Writer, name string, val interface{}, err string) {
+func (n *URLWidget) Render(w io.Writer, val interface{}, err string) {
 	fieldTemplates.ExecuteTemplate(w, "URL.html", map[string]interface{}{
-		"name":  name,
+		"name":  n.GetName(),
 		"value": val,
 		"label": n.GetLabel(),
 		"error": err,
@@ -146,13 +147,13 @@ func (n *TimeWidget) Configure(tagMap map[string]string) error {
 	return nil
 }
 
-func (n *TimeWidget) Render(w io.Writer, name string, val interface{}, err string) {
+func (n *TimeWidget) Render(w io.Writer, val interface{}, err string) {
 	formatted := ""
 	if t, ok := val.(time.Time); ok {
 		formatted = t.Format(n.Format)
 	}
 	fieldTemplates.ExecuteTemplate(w, "Time.html", map[string]interface{}{
-		"name":   name,
+		"name":   n.GetName(),
 		"format": n.Format,
 		"value":  formatted,
 		"label":  n.GetLabel(),

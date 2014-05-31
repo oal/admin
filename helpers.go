@@ -20,12 +20,12 @@ func parseTag(s string) (map[string]string, error) {
 	res := map[string]string{}
 
 	inQuotes := false
-	quotedVal := false
 	inKey := true
 
 	var key string
 
 	start := 0 // Where next key / value starts
+	end := 0
 	for i, c := range s {
 		// Skip ahead if needed
 		if i < start {
@@ -43,17 +43,14 @@ func parseTag(s string) (map[string]string, error) {
 			if inQuotes {
 				start += 1
 			}
-			quotedVal = true
+			end = i
 		}
 		if (c == ' ' || i == len(s)-1) && !inQuotes {
 			// Insert key and value. If only a key was found, insert as key with empty value.
 			key = strings.TrimSpace(key)
 
 			// If value is in quotes, end it one character earlier
-			var end int
-			if quotedVal {
-				end = i
-			} else {
+			if end == 0 {
 				end = i + 1
 			}
 
@@ -66,9 +63,9 @@ func parseTag(s string) (map[string]string, error) {
 
 			// Reset before starting to look for next pair
 			start = i + 1
+			end = 0
 			key = ""
 			inKey = true
-			quotedVal = false
 		}
 	}
 

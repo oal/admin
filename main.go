@@ -217,7 +217,7 @@ func (m *model) renderForm(w io.Writer, data []interface{}, errors []string) {
 			err = errors[i]
 		}
 		field := m.fieldByName(fieldName)
-		field.field.Render(w, field.name, val, err)
+		field.field.Render(w, val, err)
 	}
 }
 
