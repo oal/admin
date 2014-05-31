@@ -69,6 +69,7 @@ func (n *NumberWidget) Render(w io.Writer, name string, val interface{}, err str
 	fieldTemplates.ExecuteTemplate(w, "Number.html", map[string]interface{}{
 		"name":  name,
 		"value": val,
+		"error": err,
 	})
 }
 func (n *NumberWidget) Validate(val string) (interface{}, error) {
@@ -92,6 +93,7 @@ func (n *URLWidget) Render(w io.Writer, name string, val interface{}, err string
 	fieldTemplates.ExecuteTemplate(w, "URL.html", map[string]interface{}{
 		"name":  name,
 		"value": val,
+		"error": err,
 	})
 }
 func (n *URLWidget) Validate(val string) (interface{}, error) {

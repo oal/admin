@@ -14,7 +14,6 @@ func (a *Admin) render(rw http.ResponseWriter, req *http.Request, tmpl string, c
 	ctx["title"] = a.Title
 	ctx["path"] = a.Path
 	if _, ok := ctx["anonymous"]; !ok {
-		fmt.Println(ctx["anonymous"])
 		ctx["anonymous"] = false
 	}
 
@@ -131,12 +130,10 @@ func (a *Admin) handleEdit(rw http.ResponseWriter, req *http.Request) {
 		var err error
 		data, err = a.querySingleModel(model, id)
 		if err != nil {
-			fmt.Println(err)
 			http.NotFound(rw, req)
 			return
 		}
 		data = data[1:]
-		fmt.Println(data)
 	}
 
 	// Render form and template
@@ -153,7 +150,6 @@ func (a *Admin) handleEdit(rw http.ResponseWriter, req *http.Request) {
 func (a *Admin) handleSave(rw http.ResponseWriter, req *http.Request) ([]interface{}, []string) {
 	err := req.ParseForm()
 	if err != nil {
-		fmt.Println(err)
 		return nil, nil
 	}
 
@@ -199,7 +195,6 @@ func (a *Admin) handleSave(rw http.ResponseWriter, req *http.Request) ([]interfa
 		val, err := fieldName.field.Validate(req.Form.Get(model.fieldNames()[i]))
 		if err != nil {
 			errors[i] = err.Error()
-			fmt.Println(err)
 			hasErrors = true
 		}
 		data[i] = val
@@ -213,7 +208,6 @@ func (a *Admin) handleSave(rw http.ResponseWriter, req *http.Request) ([]interfa
 
 	_, err = a.db.Exec(q, data...)
 	if err != nil {
-		fmt.Println(err)
 		return nil, nil
 	}
 
