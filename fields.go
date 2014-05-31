@@ -14,7 +14,7 @@ var fieldTemplates, _ = template.ParseGlob(
 
 type Widget interface {
 	Configure(map[string]string) error
-	Render(io.Writer, string, interface{}, string)
+	Render(io.Writer, string, interface{}, string, string)
 	Validate(string) (interface{}, error)
 }
 
@@ -39,7 +39,7 @@ func (t *TextWidget) Configure(tagMap map[string]string) error {
 	return nil
 }
 
-func (t *TextWidget) Render(w io.Writer, name string, val interface{}, err string) {
+func (t *TextWidget) Render(w io.Writer, name string, val interface{}, label, err string) {
 	tmpl := "TextField.html"
 	if t.isTextarea {
 		tmpl = "Textarea.html"
@@ -47,6 +47,7 @@ func (t *TextWidget) Render(w io.Writer, name string, val interface{}, err strin
 	fieldTemplates.ExecuteTemplate(w, tmpl, map[string]interface{}{
 		"name":  name,
 		"value": val,
+		"label": label,
 	})
 }
 func (t *TextWidget) Validate(val string) (interface{}, error) {
@@ -65,10 +66,11 @@ func (n *NumberWidget) Configure(tagMap map[string]string) error {
 	return nil
 }
 
-func (n *NumberWidget) Render(w io.Writer, name string, val interface{}, err string) {
+func (n *NumberWidget) Render(w io.Writer, name string, val interface{}, label, err string) {
 	fieldTemplates.ExecuteTemplate(w, "Number.html", map[string]interface{}{
 		"name":  name,
 		"value": val,
+		"label": label,
 		"error": err,
 	})
 }
@@ -89,10 +91,11 @@ func (n *URLWidget) Configure(tagMap map[string]string) error {
 	return nil
 }
 
-func (n *URLWidget) Render(w io.Writer, name string, val interface{}, err string) {
+func (n *URLWidget) Render(w io.Writer, name string, val interface{}, label, err string) {
 	fieldTemplates.ExecuteTemplate(w, "URL.html", map[string]interface{}{
 		"name":  name,
 		"value": val,
+		"label": label,
 		"error": err,
 	})
 }
@@ -111,11 +114,14 @@ type TimeWidget struct {
 }
 
 func (n *TimeWidget) Configure(tagMap map[string]string) error {
-	n.Format = "02.01.2006"
+	n.Format = "2006-02-01"
+	if format, ok := tagMap["format"]; ok {
+		n.Format = format
+	}
 	return nil
 }
 
-func (n *TimeWidget) Render(w io.Writer, name string, val interface{}, err string) {
+func (n *TimeWidget) Render(w io.Writer, name string, val interface{}, label, err string) {
 	formatted := ""
 	if t, ok := val.(time.Time); ok {
 		formatted = t.Format(n.Format)
@@ -124,6 +130,7 @@ func (n *TimeWidget) Render(w io.Writer, name string, val interface{}, err strin
 		"name":   name,
 		"format": n.Format,
 		"value":  formatted,
+		"label":  label,
 		"error":  err,
 	})
 }

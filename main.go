@@ -177,10 +177,15 @@ func (g *modelGroup) RegisterModel(mdl interface{}) error {
 			name:       fieldName,
 			columnName: tableField,
 			field:      widget,
+			label:      fieldName,
 		}
 
 		if _, ok := tagMap["list"]; ok {
 			modelField.list = true
+		}
+
+		if label, ok := tagMap["label"]; ok {
+			modelField.label = label
 		}
 
 		am.fields = append(am.fields, modelField)
@@ -211,7 +216,7 @@ func (m *model) renderForm(w io.Writer, data []interface{}, errors []string) {
 			err = errors[i]
 		}
 		field := m.fieldByName(fieldName)
-		field.field.Render(w, field.name, val, err)
+		field.field.Render(w, field.name, val, field.label, err)
 	}
 }
 
@@ -219,6 +224,7 @@ type modelField struct {
 	name       string
 	columnName string
 	list       bool
+	label      string
 	field      Widget
 }
 
@@ -244,7 +250,7 @@ func (m *model) listColumns() []string {
 		if !field.list {
 			continue
 		}
-		names = append(names, field.name)
+		names = append(names, field.label)
 	}
 	return names
 }
