@@ -94,10 +94,18 @@ func (a *Admin) handleList(rw http.ResponseWriter, req *http.Request) {
 }
 
 func (a *Admin) handleEdit(rw http.ResponseWriter, req *http.Request) {
+	// Set up data and error slices. If we're POSTing, they'll be nil
+	// if no errors were found during validation.
+	var data []interface{}
+	var errors []string
 	if req.Method == "POST" {
-		a.handleSave(rw, req)
-		return
+		data, errors = a.handleSave(rw, req)
+		if data == nil {
+			return
+		}
 	}
+
+	// The model we're editing
 	vars := mux.Vars(req)
 	slug := vars["slug"]
 
@@ -107,8 +115,7 @@ func (a *Admin) handleEdit(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// Get model data
-	var data []interface{}
+	// Get ID if we're editing something
 	var id int
 	if idStr, ok := vars["id"]; ok {
 		id64, err := strconv.ParseInt(idStr, 10, 64)
@@ -117,6 +124,11 @@ func (a *Admin) handleEdit(rw http.ResponseWriter, req *http.Request) {
 			http.NotFound(rw, req)
 			return
 		}
+	}
+
+	// If no errors / not yet submitted for validation, and we're editing, get data from db
+	if errors == nil && id != 0 {
+		var err error
 		data, err = a.querySingleModel(model, id)
 		if err != nil {
 			fmt.Println(err)
@@ -129,7 +141,7 @@ func (a *Admin) handleEdit(rw http.ResponseWriter, req *http.Request) {
 
 	// Render form and template
 	var buf bytes.Buffer
-	model.renderForm(&buf, data)
+	model.renderForm(&buf, data, errors)
 
 	a.render(rw, req, "edit.html", map[string]interface{}{
 		"id":   id,
@@ -138,11 +150,11 @@ func (a *Admin) handleEdit(rw http.ResponseWriter, req *http.Request) {
 	})
 }
 
-func (a *Admin) handleSave(rw http.ResponseWriter, req *http.Request) {
+func (a *Admin) handleSave(rw http.ResponseWriter, req *http.Request) ([]interface{}, []string) {
 	err := req.ParseForm()
 	if err != nil {
 		fmt.Println(err)
-		return
+		return nil, nil
 	}
 
 	vars := mux.Vars(req)
@@ -150,14 +162,14 @@ func (a *Admin) handleSave(rw http.ResponseWriter, req *http.Request) {
 	model, ok := a.models[slug]
 	if !ok {
 		http.NotFound(rw, req)
-		return
+		return nil, nil
 	}
 
 	id := 0
 	if idStr, ok := vars["id"]; ok {
 		id, err = parseInt(idStr)
 		if err != nil {
-			return
+			return nil, nil
 		}
 	}
 
@@ -179,15 +191,22 @@ func (a *Admin) handleSave(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	// Get data from POST and fill a slice
+	hasErrors := false
 	data := make([]interface{}, numFields)
+	errors := make([]string, numFields)
 	for i := 0; i < numFields; i++ {
 		fieldName := model.fieldByName(model.fieldNames()[i])
 		val, err := fieldName.field.Validate(req.Form.Get(model.fieldNames()[i]))
 		if err != nil {
+			errors[i] = err.Error()
 			fmt.Println(err)
-			return
+			hasErrors = true
 		}
 		data[i] = val
+	}
+
+	if hasErrors {
+		return data, errors
 	}
 
 	sess := a.getUserSession(req)
@@ -195,7 +214,7 @@ func (a *Admin) handleSave(rw http.ResponseWriter, req *http.Request) {
 	_, err = a.db.Exec(q, data...)
 	if err != nil {
 		fmt.Println(err)
-		return
+		return nil, nil
 	}
 
 	sess.addMessage("success", fmt.Sprintf("%v has been saved.", model.Name))
@@ -205,5 +224,5 @@ func (a *Admin) handleSave(rw http.ResponseWriter, req *http.Request) {
 	} else {
 		http.Redirect(rw, req, a.modelURL(slug, fmt.Sprintf("/edit/%v", id)), 302)
 	}
-
+	return nil, nil
 }

@@ -14,7 +14,7 @@ var fieldTemplates, _ = template.ParseGlob(
 
 type Widget interface {
 	Configure(map[string]string) error
-	Render(io.Writer, string, interface{})
+	Render(io.Writer, string, interface{}, string)
 	Validate(string) (interface{}, error)
 }
 
@@ -39,7 +39,7 @@ func (t *TextWidget) Configure(tagMap map[string]string) error {
 	return nil
 }
 
-func (t *TextWidget) Render(w io.Writer, name string, val interface{}) {
+func (t *TextWidget) Render(w io.Writer, name string, val interface{}, err string) {
 	tmpl := "TextField.html"
 	if t.isTextarea {
 		tmpl = "Textarea.html"
@@ -65,7 +65,7 @@ func (n *NumberWidget) Configure(tagMap map[string]string) error {
 	return nil
 }
 
-func (n *NumberWidget) Render(w io.Writer, name string, val interface{}) {
+func (n *NumberWidget) Render(w io.Writer, name string, val interface{}, err string) {
 	fieldTemplates.ExecuteTemplate(w, "Number.html", map[string]interface{}{
 		"name":  name,
 		"value": val,
@@ -88,7 +88,7 @@ func (n *URLWidget) Configure(tagMap map[string]string) error {
 	return nil
 }
 
-func (n *URLWidget) Render(w io.Writer, name string, val interface{}) {
+func (n *URLWidget) Render(w io.Writer, name string, val interface{}, err string) {
 	fieldTemplates.ExecuteTemplate(w, "URL.html", map[string]interface{}{
 		"name":  name,
 		"value": val,
@@ -113,7 +113,7 @@ func (n *TimeWidget) Configure(tagMap map[string]string) error {
 	return nil
 }
 
-func (n *TimeWidget) Render(w io.Writer, name string, val interface{}) {
+func (n *TimeWidget) Render(w io.Writer, name string, val interface{}, err string) {
 	formatted := ""
 	if t, ok := val.(time.Time); ok {
 		formatted = t.Format(n.Format)
@@ -122,6 +122,7 @@ func (n *TimeWidget) Render(w io.Writer, name string, val interface{}) {
 		"name":   name,
 		"format": n.Format,
 		"value":  formatted,
+		"error":  err,
 	})
 }
 func (n *TimeWidget) Validate(val string) (interface{}, error) {
