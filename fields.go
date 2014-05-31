@@ -14,13 +14,34 @@ var fieldTemplates, _ = template.ParseGlob(
 
 type Widget interface {
 	Configure(map[string]string) error
-	Render(io.Writer, string, interface{}, string, string)
+	Render(io.Writer, string, interface{}, string)
 	Validate(string) (interface{}, error)
+	SetLabel(string)
+	GetLabel() string
+	SetName(string)
+}
+
+type BaseWidget struct {
+	name  string
+	label string
+}
+
+func (b *BaseWidget) SetLabel(label string) {
+	b.label = label
+}
+
+func (b *BaseWidget) GetLabel() string {
+	return b.label
+}
+
+func (b *BaseWidget) SetName(name string) {
+	b.name = name
 }
 
 // Text widget
 
 type TextWidget struct {
+	*BaseWidget
 	isTextarea bool
 	MaxLength  int
 }
@@ -39,7 +60,7 @@ func (t *TextWidget) Configure(tagMap map[string]string) error {
 	return nil
 }
 
-func (t *TextWidget) Render(w io.Writer, name string, val interface{}, label, err string) {
+func (t *TextWidget) Render(w io.Writer, name string, val interface{}, err string) {
 	tmpl := "TextField.html"
 	if t.isTextarea {
 		tmpl = "Textarea.html"
@@ -47,7 +68,8 @@ func (t *TextWidget) Render(w io.Writer, name string, val interface{}, label, er
 	fieldTemplates.ExecuteTemplate(w, tmpl, map[string]interface{}{
 		"name":  name,
 		"value": val,
-		"label": label,
+		"label": t.GetLabel(),
+		"err":   err,
 	})
 }
 func (t *TextWidget) Validate(val string) (interface{}, error) {
@@ -60,17 +82,18 @@ func (t *TextWidget) Validate(val string) (interface{}, error) {
 // Number widget
 
 type NumberWidget struct {
+	*BaseWidget
 }
 
 func (n *NumberWidget) Configure(tagMap map[string]string) error {
 	return nil
 }
 
-func (n *NumberWidget) Render(w io.Writer, name string, val interface{}, label, err string) {
+func (n *NumberWidget) Render(w io.Writer, name string, val interface{}, err string) {
 	fieldTemplates.ExecuteTemplate(w, "Number.html", map[string]interface{}{
 		"name":  name,
 		"value": val,
-		"label": label,
+		"label": n.GetLabel(),
 		"error": err,
 	})
 }
@@ -85,17 +108,18 @@ func (n *NumberWidget) Validate(val string) (interface{}, error) {
 // URL widget
 
 type URLWidget struct {
+	*BaseWidget
 }
 
 func (n *URLWidget) Configure(tagMap map[string]string) error {
 	return nil
 }
 
-func (n *URLWidget) Render(w io.Writer, name string, val interface{}, label, err string) {
+func (n *URLWidget) Render(w io.Writer, name string, val interface{}, err string) {
 	fieldTemplates.ExecuteTemplate(w, "URL.html", map[string]interface{}{
 		"name":  name,
 		"value": val,
-		"label": label,
+		"label": n.GetLabel(),
 		"error": err,
 	})
 }
@@ -110,6 +134,7 @@ func (n *URLWidget) Validate(val string) (interface{}, error) {
 // Time widget
 
 type TimeWidget struct {
+	*BaseWidget
 	Format string
 }
 
@@ -121,7 +146,7 @@ func (n *TimeWidget) Configure(tagMap map[string]string) error {
 	return nil
 }
 
-func (n *TimeWidget) Render(w io.Writer, name string, val interface{}, label, err string) {
+func (n *TimeWidget) Render(w io.Writer, name string, val interface{}, err string) {
 	formatted := ""
 	if t, ok := val.(time.Time); ok {
 		formatted = t.Format(n.Format)
@@ -130,7 +155,7 @@ func (n *TimeWidget) Render(w io.Writer, name string, val interface{}, label, er
 		"name":   name,
 		"format": n.Format,
 		"value":  formatted,
-		"label":  label,
+		"label":  n.GetLabel(),
 		"error":  err,
 	})
 }

@@ -142,30 +142,30 @@ func (g *modelGroup) RegisterModel(mdl interface{}) error {
 			tableField = field.Name
 		}
 
+		// Choose widget
 		var widget Widget
 		fmt.Println(kind)
 		if widgetType, ok := tagMap["widget"]; ok {
 			switch widgetType {
 			case "url":
-				widget = &URLWidget{}
+				widget = &URLWidget{BaseWidget: &BaseWidget{}}
 			default:
-				widget = &TextWidget{}
+				widget = &TextWidget{BaseWidget: &BaseWidget{}}
 			}
 		} else {
 			switch kind {
 			case reflect.String:
-				widget = &TextWidget{}
+				widget = &TextWidget{BaseWidget: &BaseWidget{}}
 			case reflect.Int:
-				widget = &NumberWidget{}
+				widget = &NumberWidget{BaseWidget: &BaseWidget{}}
 			case reflect.Struct:
-				widget = &TimeWidget{}
+				widget = &TimeWidget{BaseWidget: &BaseWidget{}}
 			default:
 				fmt.Println("NOOO")
-				widget = &TextWidget{}
+				widget = &TextWidget{BaseWidget: &BaseWidget{}}
 			}
 		}
-
-		// Auto find widget
+		widget.SetName(fieldName)
 
 		// Read relevant config options from the tagMap
 		err = widget.Configure(tagMap)
@@ -173,19 +173,20 @@ func (g *modelGroup) RegisterModel(mdl interface{}) error {
 			panic(err)
 		}
 
+		if label, ok := tagMap["label"]; ok {
+			widget.SetLabel(label)
+		} else {
+			widget.SetLabel(fieldName)
+		}
+
 		modelField := &modelField{
 			name:       fieldName,
 			columnName: tableField,
 			field:      widget,
-			label:      fieldName,
 		}
 
 		if _, ok := tagMap["list"]; ok {
 			modelField.list = true
-		}
-
-		if label, ok := tagMap["label"]; ok {
-			modelField.label = label
 		}
 
 		am.fields = append(am.fields, modelField)
@@ -216,7 +217,7 @@ func (m *model) renderForm(w io.Writer, data []interface{}, errors []string) {
 			err = errors[i]
 		}
 		field := m.fieldByName(fieldName)
-		field.field.Render(w, field.name, val, field.label, err)
+		field.field.Render(w, field.name, val, err)
 	}
 }
 
@@ -224,7 +225,6 @@ type modelField struct {
 	name       string
 	columnName string
 	list       bool
-	label      string
 	field      Widget
 }
 
@@ -250,7 +250,7 @@ func (m *model) listColumns() []string {
 		if !field.list {
 			continue
 		}
-		names = append(names, field.label)
+		names = append(names, field.field.GetLabel())
 	}
 	return names
 }
