@@ -47,6 +47,18 @@ func (b *BaseWidget) GetName() string {
 	return b.name
 }
 
+func (b *BaseWidget) BaseRender(w io.Writer, tmpl string, value interface{}, err string, ctx map[string]interface{}) {
+	if ctx == nil {
+		ctx = map[string]interface{}{}
+	}
+	ctx["label"] = b.GetLabel()
+	ctx["name"] = b.GetName()
+	ctx["value"] = value
+	ctx["error"] = err
+
+	fieldTemplates.ExecuteTemplate(w, tmpl, ctx)
+}
+
 // Text widget
 
 type TextWidget struct {
@@ -74,12 +86,7 @@ func (t *TextWidget) Render(w io.Writer, val interface{}, err string) {
 	if t.isTextarea {
 		tmpl = "Textarea.html"
 	}
-	fieldTemplates.ExecuteTemplate(w, tmpl, map[string]interface{}{
-		"name":  t.GetName(),
-		"value": val,
-		"label": t.GetLabel(),
-		"err":   err,
-	})
+	t.BaseRender(w, tmpl, val, err, nil)
 }
 func (t *TextWidget) Validate(val string) (interface{}, error) {
 	if t.MaxLength != 0 && len(val) > t.MaxLength {
@@ -95,12 +102,7 @@ type NumberWidget struct {
 }
 
 func (n *NumberWidget) Render(w io.Writer, val interface{}, err string) {
-	fieldTemplates.ExecuteTemplate(w, "Number.html", map[string]interface{}{
-		"name":  n.GetName(),
-		"value": val,
-		"label": n.GetLabel(),
-		"error": err,
-	})
+	n.BaseRender(w, "Number.html", val, err, nil)
 }
 func (n *NumberWidget) Validate(val string) (interface{}, error) {
 	num, err := parseInt(val)
@@ -117,12 +119,7 @@ type URLWidget struct {
 }
 
 func (n *URLWidget) Render(w io.Writer, val interface{}, err string) {
-	fieldTemplates.ExecuteTemplate(w, "URL.html", map[string]interface{}{
-		"name":  n.GetName(),
-		"value": val,
-		"label": n.GetLabel(),
-		"error": err,
-	})
+	n.BaseRender(w, "URL.html", val, err, nil)
 }
 func (n *URLWidget) Validate(val string) (interface{}, error) {
 	_, err := url.Parse(val)
@@ -152,12 +149,8 @@ func (n *TimeWidget) Render(w io.Writer, val interface{}, err string) {
 	if t, ok := val.(time.Time); ok {
 		formatted = t.Format(n.Format)
 	}
-	fieldTemplates.ExecuteTemplate(w, "Time.html", map[string]interface{}{
-		"name":   n.GetName(),
+	n.BaseRender(w, "Time.html", formatted, err, map[string]interface{}{
 		"format": n.Format,
-		"value":  formatted,
-		"label":  n.GetLabel(),
-		"error":  err,
 	})
 }
 func (n *TimeWidget) Validate(val string) (interface{}, error) {
