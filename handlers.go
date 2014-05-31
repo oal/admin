@@ -59,6 +59,15 @@ func (a *Admin) handleIndex(rw http.ResponseWriter, req *http.Request) {
 	})
 }
 
+func (a *Admin) handleLogout(rw http.ResponseWriter, req *http.Request) {
+	cookie, err := req.Cookie("admin")
+	if err != nil {
+		return
+	}
+
+	delete(a.sessions, cookie.Value)
+	http.Redirect(rw, req, a.Path, 302)
+}
 func (a *Admin) handleList(rw http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	slug := vars["slug"]
@@ -181,13 +190,14 @@ func (a *Admin) handleSave(rw http.ResponseWriter, req *http.Request) {
 		data[i] = val
 	}
 
+	sess := a.getUserSession(req)
+
 	_, err = a.db.Exec(q, data...)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
-	sess := a.getUserSession(req)
 	sess.addMessage("success", fmt.Sprintf("%v has been saved.", model.Name))
 
 	if req.Form.Get("done") == "true" {
@@ -195,4 +205,5 @@ func (a *Admin) handleSave(rw http.ResponseWriter, req *http.Request) {
 	} else {
 		http.Redirect(rw, req, a.modelURL(slug, fmt.Sprintf("/edit/%v", id)), 302)
 	}
+
 }

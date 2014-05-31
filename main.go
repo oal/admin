@@ -57,6 +57,7 @@ func Setup(admin *Admin) (*Admin, error) {
 	sr := admin.Router.PathPrefix(admin.Path).Subrouter()
 	sr.StrictSlash(true)
 	sr.HandleFunc("/", admin.handlerWrapper(admin.handleIndex))
+	sr.HandleFunc("/logout/", admin.handlerWrapper(admin.handleLogout))
 	sr.HandleFunc("/model/{slug}/", admin.handlerWrapper(admin.handleList))
 	sr.HandleFunc("/model/{slug}/new/", admin.handlerWrapper(admin.handleEdit))
 	sr.HandleFunc("/model/{slug}/edit/{id}/", admin.handlerWrapper(admin.handleEdit))
