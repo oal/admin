@@ -109,7 +109,7 @@ func (g *modelGroup) RegisterModel(mdl interface{}) error {
 		Name:      name,
 		Slug:      slug.SlugAscii(name),
 		tableName: tableName,
-		fields:    []*modelField{},
+		fields:    []Field{},
 		instance:  mdl,
 	}
 
@@ -143,7 +143,7 @@ func (g *modelGroup) RegisterModel(mdl interface{}) error {
 		}
 
 		// Choose widget
-		var widget Widget
+		var widget Field
 		fmt.Println(kind)
 		if widgetType, ok := tagMap["widget"]; ok {
 			switch widgetType {
@@ -165,7 +165,7 @@ func (g *modelGroup) RegisterModel(mdl interface{}) error {
 				widget = &TextWidget{BaseWidget: &BaseWidget{}}
 			}
 		}
-		widget.SetName(fieldName)
+		widget.Attrs().name = fieldName
 
 		// Read relevant config options from the tagMap
 		err = widget.Configure(tagMap)
@@ -174,22 +174,18 @@ func (g *modelGroup) RegisterModel(mdl interface{}) error {
 		}
 
 		if label, ok := tagMap["label"]; ok {
-			widget.SetLabel(label)
+			widget.Attrs().label = label
 		} else {
-			widget.SetLabel(fieldName)
+			widget.Attrs().label = fieldName
 		}
 
-		modelField := &modelField{
-			name:       fieldName,
-			columnName: tableField,
-			field:      widget,
-		}
+		widget.Attrs().columnName = tableField
 
 		if _, ok := tagMap["list"]; ok {
-			modelField.list = true
+			widget.Attrs().list = true
 		}
 
-		am.fields = append(am.fields, modelField)
+		am.fields = append(am.fields, widget)
 	}
 
 	g.admin.models[am.Slug] = &am
@@ -200,7 +196,7 @@ func (g *modelGroup) RegisterModel(mdl interface{}) error {
 type model struct {
 	Name      string
 	Slug      string
-	fields    []*modelField
+	fields    []Field
 	tableName string
 	instance  interface{}
 }
@@ -217,21 +213,14 @@ func (m *model) renderForm(w io.Writer, data []interface{}, errors []string) {
 			err = errors[i]
 		}
 		field := m.fieldByName(fieldName)
-		field.field.Render(w, val, err)
+		field.Render(w, val, err)
 	}
-}
-
-type modelField struct {
-	name       string
-	columnName string
-	list       bool
-	field      Widget
 }
 
 func (m *model) fieldNames() []string {
 	names := []string{}
 	for _, field := range m.fields {
-		names = append(names, field.name)
+		names = append(names, field.Attrs().name)
 	}
 	return names
 }
@@ -239,7 +228,7 @@ func (m *model) fieldNames() []string {
 func (m *model) tableColumns() []string {
 	names := []string{}
 	for _, field := range m.fields {
-		names = append(names, field.columnName)
+		names = append(names, field.Attrs().columnName)
 	}
 	return names
 }
@@ -247,10 +236,10 @@ func (m *model) tableColumns() []string {
 func (m *model) listColumns() []string {
 	names := []string{}
 	for _, field := range m.fields {
-		if !field.list {
+		if !field.Attrs().list {
 			continue
 		}
-		names = append(names, field.field.GetLabel())
+		names = append(names, field.Attrs().label)
 	}
 	return names
 }
@@ -258,17 +247,17 @@ func (m *model) listColumns() []string {
 func (m *model) listTableColumns() []string {
 	names := []string{}
 	for _, field := range m.fields {
-		if !field.list {
+		if !field.Attrs().list {
 			continue
 		}
-		names = append(names, field.columnName)
+		names = append(names, field.Attrs().columnName)
 	}
 	return names
 }
 
-func (m *model) fieldByName(name string) *modelField {
+func (m *model) fieldByName(name string) Field {
 	for _, field := range m.fields {
-		if field.name == name {
+		if field.Attrs().name == name {
 			return field
 		}
 	}

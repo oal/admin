@@ -192,7 +192,7 @@ func (a *Admin) handleSave(rw http.ResponseWriter, req *http.Request) ([]interfa
 	errors := make([]string, numFields)
 	for i := 0; i < numFields; i++ {
 		fieldName := model.fieldByName(model.fieldNames()[i])
-		val, err := fieldName.field.Validate(req.Form.Get(model.fieldNames()[i]))
+		val, err := fieldName.Validate(req.Form.Get(model.fieldNames()[i]))
 		if err != nil {
 			errors[i] = err.Error()
 			hasErrors = true

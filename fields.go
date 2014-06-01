@@ -12,47 +12,33 @@ var fieldTemplates, _ = template.ParseGlob(
 	"admin/templates/fields/*.html",
 )
 
-type Widget interface {
+type Field interface {
 	Configure(map[string]string) error
 	Render(io.Writer, interface{}, string)
 	Validate(string) (interface{}, error)
-	SetLabel(string)
-	GetLabel() string
-	SetName(string)
-	GetName() string
+	Attrs() *BaseWidget
 }
 
 type BaseWidget struct {
-	name  string
-	label string
+	name       string
+	label      string
+	columnName string
+	list       bool
 }
 
 func (b *BaseWidget) Configure(tagMap map[string]string) error {
 	return nil
 }
 
-func (b *BaseWidget) SetLabel(label string) {
-	b.label = label
+func (b *BaseWidget) Attrs() *BaseWidget {
+	return b
 }
-
-func (b *BaseWidget) GetLabel() string {
-	return b.label
-}
-
-func (b *BaseWidget) SetName(name string) {
-	b.name = name
-}
-
-func (b *BaseWidget) GetName() string {
-	return b.name
-}
-
 func (b *BaseWidget) BaseRender(w io.Writer, tmpl string, value interface{}, err string, ctx map[string]interface{}) {
 	if ctx == nil {
 		ctx = map[string]interface{}{}
 	}
-	ctx["label"] = b.GetLabel()
-	ctx["name"] = b.GetName()
+	ctx["label"] = b.label
+	ctx["name"] = b.name
 	ctx["value"] = value
 	ctx["error"] = err
 
