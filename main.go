@@ -124,10 +124,10 @@ func (g *modelGroup) RegisterModel(mdl interface{}) error {
 	}
 
 	for i := 0; i < ind.NumField(); i++ {
-		field := t.Elem().Field(i)
-		fieldType := field.Type
+		refl := t.Elem().Field(i)
+		fieldType := refl.Type
 		kind := fieldType.Kind()
-		tag := field.Tag.Get("admin")
+		tag := refl.Tag.Get("admin")
 		if tag == "-" {
 			continue
 		}
@@ -139,7 +139,7 @@ func (g *modelGroup) RegisterModel(mdl interface{}) error {
 		}
 
 		// Expect pointers to be foreignkeys and foreignkeys to have the form Field[Id]
-		fieldName := field.Name
+		fieldName := refl.Name
 		if kind == reflect.Ptr {
 			fieldName += "Id"
 		}
@@ -149,55 +149,55 @@ func (g *modelGroup) RegisterModel(mdl interface{}) error {
 		if g.admin.NameTransform != nil {
 			tableField = g.admin.NameTransform(fieldName)
 		} else {
-			tableField = field.Name
+			tableField = refl.Name
 		}
 
 		// Choose Field
-		var Field Field
+		var field Field
 		fmt.Println(kind)
-		if FieldType, ok := tagMap["Field"]; ok {
-			switch FieldType {
+		if fieldType, ok := tagMap["Field"]; ok {
+			switch fieldType {
 			case "url":
-				Field = &URLField{BaseField: &BaseField{}}
+				field = &URLField{BaseField: &BaseField{}}
 			default:
-				Field = &TextField{BaseField: &BaseField{}}
+				field = &TextField{BaseField: &BaseField{}}
 			}
 		} else {
 			switch kind {
 			case reflect.String:
-				Field = &TextField{BaseField: &BaseField{}}
+				field = &TextField{BaseField: &BaseField{}}
 			case reflect.Int, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Uint, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-				Field = &IntField{BaseField: &BaseField{}}
+				field = &IntField{BaseField: &BaseField{}}
 			case reflect.Float32, reflect.Float64:
-				Field = &FloatField{BaseField: &BaseField{}}
+				field = &FloatField{BaseField: &BaseField{}}
 			case reflect.Struct:
-				Field = &TimeField{BaseField: &BaseField{}}
+				field = &TimeField{BaseField: &BaseField{}}
 			default:
 				fmt.Println("NOOO")
-				Field = &TextField{BaseField: &BaseField{}}
+				field = &TextField{BaseField: &BaseField{}}
 			}
 		}
-		Field.Attrs().name = fieldName
+		field.Attrs().name = fieldName
 
 		// Read relevant config options from the tagMap
-		err = Field.Configure(tagMap)
+		err = field.Configure(tagMap)
 		if err != nil {
 			panic(err)
 		}
 
 		if label, ok := tagMap["label"]; ok {
-			Field.Attrs().label = label
+			field.Attrs().label = label
 		} else {
-			Field.Attrs().label = fieldName
+			field.Attrs().label = fieldName
 		}
 
-		Field.Attrs().columnName = tableField
+		field.Attrs().columnName = tableField
 
 		if _, ok := tagMap["list"]; ok {
-			Field.Attrs().list = true
+			field.Attrs().list = true
 		}
 
-		am.fields = append(am.fields, Field)
+		am.fields = append(am.fields, field)
 	}
 
 	g.admin.models[am.Slug] = &am
