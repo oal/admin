@@ -5,6 +5,7 @@ import (
 	"html/template"
 	"io"
 	"net/url"
+	"strconv"
 	"time"
 )
 
@@ -81,17 +82,110 @@ func (t *TextWidget) Validate(val string) (interface{}, error) {
 	return val, nil
 }
 
-// Number widget
-
-type NumberWidget struct {
+type IntWidget struct {
 	*BaseWidget
+	step int
+	min  int
+	max  int
 }
 
-func (n *NumberWidget) Render(w io.Writer, val interface{}, err string) {
-	n.BaseRender(w, "Number.html", val, err, nil)
+func (i *IntWidget) Configure(tagMap map[string]string) error {
+	step := 1
+	min := -100000
+	max := 100000
+
+	if str, ok := tagMap["step"]; ok {
+		var err error
+		step, err = parseInt(str)
+		if err != nil {
+			return err
+		}
+	}
+	if str, ok := tagMap["min"]; ok {
+		var err error
+		min, err = parseInt(str)
+		if err != nil {
+			return err
+		}
+	}
+	if str, ok := tagMap["max"]; ok {
+		var err error
+		max, err = parseInt(str)
+		if err != nil {
+			return err
+		}
+	}
+
+	i.step = step
+	i.min = min
+	i.max = max
+
+	return nil
 }
-func (n *NumberWidget) Validate(val string) (interface{}, error) {
-	num, err := parseInt(val)
+
+func (i *IntWidget) Render(w io.Writer, val interface{}, err string) {
+	i.BaseRender(w, "Number.html", val, err, map[string]interface{}{
+		"step": i.step,
+	})
+}
+func (i *IntWidget) Validate(val string) (interface{}, error) {
+	num, err := strconv.ParseInt(val, 10, 64)
+	if err != nil {
+		return nil, err
+	}
+	return num, nil
+}
+
+type FloatWidget struct {
+	*BaseWidget
+	step float64
+	min  float64
+	max  float64
+}
+
+func (f *FloatWidget) Configure(tagMap map[string]string) error {
+	step := 1.0
+	min := -100000.0
+	max := 100000.0
+
+	if str, ok := tagMap["step"]; ok {
+		var err error
+		step, err = strconv.ParseFloat(str, 64)
+		if err != nil {
+			return err
+		}
+	}
+	if str, ok := tagMap["min"]; ok {
+		var err error
+		min, err = strconv.ParseFloat(str, 64)
+		if err != nil {
+			return err
+		}
+	}
+	if str, ok := tagMap["max"]; ok {
+		var err error
+		max, err = strconv.ParseFloat(str, 64)
+		if err != nil {
+			return err
+		}
+	}
+
+	f.step = step
+	f.max = max
+	f.min = min
+
+	return nil
+}
+
+func (f *FloatWidget) Render(w io.Writer, val interface{}, err string) {
+	f.BaseRender(w, "Number.html", val, err, map[string]interface{}{
+		"step": f.step,
+		"min":  f.min,
+		"max":  f.max,
+	})
+}
+func (f *FloatWidget) Validate(val string) (interface{}, error) {
+	num, err := strconv.ParseFloat(val, 64)
 	if err != nil {
 		return nil, err
 	}

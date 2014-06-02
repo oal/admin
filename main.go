@@ -156,8 +156,10 @@ func (g *modelGroup) RegisterModel(mdl interface{}) error {
 			switch kind {
 			case reflect.String:
 				widget = &TextWidget{BaseWidget: &BaseWidget{}}
-			case reflect.Int:
-				widget = &NumberWidget{BaseWidget: &BaseWidget{}}
+			case reflect.Int, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Uint, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+				widget = &IntWidget{BaseWidget: &BaseWidget{}}
+			case reflect.Float32, reflect.Float64:
+				widget = &FloatWidget{BaseWidget: &BaseWidget{}}
 			case reflect.Struct:
 				widget = &TimeWidget{BaseWidget: &BaseWidget{}}
 			default:
