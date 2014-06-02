@@ -90,6 +90,10 @@ type modelGroup struct {
 	Models []*model
 }
 
+type namedModel interface {
+	AdminName() string
+}
+
 // RegisterModel adds a model to a model group.
 func (g *modelGroup) RegisterModel(mdl interface{}) error {
 	t := reflect.TypeOf(mdl)
@@ -99,12 +103,18 @@ func (g *modelGroup) RegisterModel(mdl interface{}) error {
 
 	parts := strings.Split(t.String(), ".")
 	name := parts[len(parts)-1]
+
 	var tableName string
 	if g.admin.NameTransform != nil {
 		tableName = g.admin.NameTransform(name)
 	} else {
 		tableName = name
 	}
+
+	if named, ok := mdl.(namedModel); ok {
+		name = named.AdminName()
+	}
+
 	am := model{
 		Name:      name,
 		Slug:      slug.SlugAscii(name),
@@ -142,52 +152,52 @@ func (g *modelGroup) RegisterModel(mdl interface{}) error {
 			tableField = field.Name
 		}
 
-		// Choose widget
-		var widget Field
+		// Choose Field
+		var Field Field
 		fmt.Println(kind)
-		if widgetType, ok := tagMap["widget"]; ok {
-			switch widgetType {
+		if FieldType, ok := tagMap["Field"]; ok {
+			switch FieldType {
 			case "url":
-				widget = &URLWidget{BaseWidget: &BaseWidget{}}
+				Field = &URLField{BaseField: &BaseField{}}
 			default:
-				widget = &TextWidget{BaseWidget: &BaseWidget{}}
+				Field = &TextField{BaseField: &BaseField{}}
 			}
 		} else {
 			switch kind {
 			case reflect.String:
-				widget = &TextWidget{BaseWidget: &BaseWidget{}}
+				Field = &TextField{BaseField: &BaseField{}}
 			case reflect.Int, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Uint, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-				widget = &IntWidget{BaseWidget: &BaseWidget{}}
+				Field = &IntField{BaseField: &BaseField{}}
 			case reflect.Float32, reflect.Float64:
-				widget = &FloatWidget{BaseWidget: &BaseWidget{}}
+				Field = &FloatField{BaseField: &BaseField{}}
 			case reflect.Struct:
-				widget = &TimeWidget{BaseWidget: &BaseWidget{}}
+				Field = &TimeField{BaseField: &BaseField{}}
 			default:
 				fmt.Println("NOOO")
-				widget = &TextWidget{BaseWidget: &BaseWidget{}}
+				Field = &TextField{BaseField: &BaseField{}}
 			}
 		}
-		widget.Attrs().name = fieldName
+		Field.Attrs().name = fieldName
 
 		// Read relevant config options from the tagMap
-		err = widget.Configure(tagMap)
+		err = Field.Configure(tagMap)
 		if err != nil {
 			panic(err)
 		}
 
 		if label, ok := tagMap["label"]; ok {
-			widget.Attrs().label = label
+			Field.Attrs().label = label
 		} else {
-			widget.Attrs().label = fieldName
+			Field.Attrs().label = fieldName
 		}
 
-		widget.Attrs().columnName = tableField
+		Field.Attrs().columnName = tableField
 
 		if _, ok := tagMap["list"]; ok {
-			widget.Attrs().list = true
+			Field.Attrs().list = true
 		}
 
-		am.fields = append(am.fields, widget)
+		am.fields = append(am.fields, Field)
 	}
 
 	g.admin.models[am.Slug] = &am

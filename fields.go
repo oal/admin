@@ -17,24 +17,24 @@ type Field interface {
 	Configure(map[string]string) error
 	Render(io.Writer, interface{}, string)
 	Validate(string) (interface{}, error)
-	Attrs() *BaseWidget
+	Attrs() *BaseField
 }
 
-type BaseWidget struct {
+type BaseField struct {
 	name       string
 	label      string
 	columnName string
 	list       bool
 }
 
-func (b *BaseWidget) Configure(tagMap map[string]string) error {
+func (b *BaseField) Configure(tagMap map[string]string) error {
 	return nil
 }
 
-func (b *BaseWidget) Attrs() *BaseWidget {
+func (b *BaseField) Attrs() *BaseField {
 	return b
 }
-func (b *BaseWidget) BaseRender(w io.Writer, tmpl string, value interface{}, err string, ctx map[string]interface{}) {
+func (b *BaseField) BaseRender(w io.Writer, tmpl string, value interface{}, err string, ctx map[string]interface{}) {
 	if ctx == nil {
 		ctx = map[string]interface{}{}
 	}
@@ -46,17 +46,17 @@ func (b *BaseWidget) BaseRender(w io.Writer, tmpl string, value interface{}, err
 	fieldTemplates.ExecuteTemplate(w, tmpl, ctx)
 }
 
-// Text widget
+// Text Field
 
-type TextWidget struct {
-	*BaseWidget
+type TextField struct {
+	*BaseField
 	isTextarea bool
 	MaxLength  int
 }
 
-func (t *TextWidget) Configure(tagMap map[string]string) error {
-	if widget, ok := tagMap["widget"]; ok {
-		t.isTextarea = widget == "textarea"
+func (t *TextField) Configure(tagMap map[string]string) error {
+	if Field, ok := tagMap["Field"]; ok {
+		t.isTextarea = Field == "textarea"
 	}
 	if maxLength, ok := tagMap["maxlength"]; ok {
 		length, err := parseInt(maxLength)
@@ -68,28 +68,28 @@ func (t *TextWidget) Configure(tagMap map[string]string) error {
 	return nil
 }
 
-func (t *TextWidget) Render(w io.Writer, val interface{}, err string) {
+func (t *TextField) Render(w io.Writer, val interface{}, err string) {
 	tmpl := "TextField.html"
 	if t.isTextarea {
 		tmpl = "Textarea.html"
 	}
 	t.BaseRender(w, tmpl, val, err, nil)
 }
-func (t *TextWidget) Validate(val string) (interface{}, error) {
+func (t *TextField) Validate(val string) (interface{}, error) {
 	if t.MaxLength != 0 && len(val) > t.MaxLength {
 		return nil, errors.New("Value is too long")
 	}
 	return val, nil
 }
 
-type IntWidget struct {
-	*BaseWidget
+type IntField struct {
+	*BaseField
 	step int
 	min  int
 	max  int
 }
 
-func (i *IntWidget) Configure(tagMap map[string]string) error {
+func (i *IntField) Configure(tagMap map[string]string) error {
 	step := 1
 	min := -100000
 	max := 100000
@@ -123,12 +123,12 @@ func (i *IntWidget) Configure(tagMap map[string]string) error {
 	return nil
 }
 
-func (i *IntWidget) Render(w io.Writer, val interface{}, err string) {
+func (i *IntField) Render(w io.Writer, val interface{}, err string) {
 	i.BaseRender(w, "Number.html", val, err, map[string]interface{}{
 		"step": i.step,
 	})
 }
-func (i *IntWidget) Validate(val string) (interface{}, error) {
+func (i *IntField) Validate(val string) (interface{}, error) {
 	num, err := strconv.ParseInt(val, 10, 64)
 	if err != nil {
 		return nil, err
@@ -136,14 +136,14 @@ func (i *IntWidget) Validate(val string) (interface{}, error) {
 	return num, nil
 }
 
-type FloatWidget struct {
-	*BaseWidget
+type FloatField struct {
+	*BaseField
 	step float64
 	min  float64
 	max  float64
 }
 
-func (f *FloatWidget) Configure(tagMap map[string]string) error {
+func (f *FloatField) Configure(tagMap map[string]string) error {
 	step := 1.0
 	min := -100000.0
 	max := 100000.0
@@ -177,14 +177,14 @@ func (f *FloatWidget) Configure(tagMap map[string]string) error {
 	return nil
 }
 
-func (f *FloatWidget) Render(w io.Writer, val interface{}, err string) {
+func (f *FloatField) Render(w io.Writer, val interface{}, err string) {
 	f.BaseRender(w, "Number.html", val, err, map[string]interface{}{
 		"step": f.step,
 		"min":  f.min,
 		"max":  f.max,
 	})
 }
-func (f *FloatWidget) Validate(val string) (interface{}, error) {
+func (f *FloatField) Validate(val string) (interface{}, error) {
 	num, err := strconv.ParseFloat(val, 64)
 	if err != nil {
 		return nil, err
@@ -192,16 +192,16 @@ func (f *FloatWidget) Validate(val string) (interface{}, error) {
 	return num, nil
 }
 
-// URL widget
+// URL Field
 
-type URLWidget struct {
-	*BaseWidget
+type URLField struct {
+	*BaseField
 }
 
-func (n *URLWidget) Render(w io.Writer, val interface{}, err string) {
+func (n *URLField) Render(w io.Writer, val interface{}, err string) {
 	n.BaseRender(w, "URL.html", val, err, nil)
 }
-func (n *URLWidget) Validate(val string) (interface{}, error) {
+func (n *URLField) Validate(val string) (interface{}, error) {
 	_, err := url.Parse(val)
 	if err != nil {
 		return nil, err
@@ -209,14 +209,14 @@ func (n *URLWidget) Validate(val string) (interface{}, error) {
 	return val, nil
 }
 
-// Time widget
+// Time Field
 
-type TimeWidget struct {
-	*BaseWidget
+type TimeField struct {
+	*BaseField
 	Format string
 }
 
-func (n *TimeWidget) Configure(tagMap map[string]string) error {
+func (n *TimeField) Configure(tagMap map[string]string) error {
 	n.Format = "2006-02-01"
 	if format, ok := tagMap["format"]; ok {
 		n.Format = format
@@ -224,7 +224,7 @@ func (n *TimeWidget) Configure(tagMap map[string]string) error {
 	return nil
 }
 
-func (n *TimeWidget) Render(w io.Writer, val interface{}, err string) {
+func (n *TimeField) Render(w io.Writer, val interface{}, err string) {
 	formatted := ""
 	if t, ok := val.(time.Time); ok {
 		formatted = t.Format(n.Format)
@@ -233,7 +233,7 @@ func (n *TimeWidget) Render(w io.Writer, val interface{}, err string) {
 		"format": n.Format,
 	})
 }
-func (n *TimeWidget) Validate(val string) (interface{}, error) {
+func (n *TimeField) Validate(val string) (interface{}, error) {
 	t, err := time.Parse(n.Format, val)
 	if err != nil {
 		return nil, err
