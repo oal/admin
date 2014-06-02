@@ -55,7 +55,7 @@ type TextField struct {
 }
 
 func (t *TextField) Configure(tagMap map[string]string) error {
-	if Field, ok := tagMap["Field"]; ok {
+	if Field, ok := tagMap["field"]; ok {
 		t.isTextarea = Field == "textarea"
 	}
 	if maxLength, ok := tagMap["maxlength"]; ok {

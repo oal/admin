@@ -155,7 +155,7 @@ func (g *modelGroup) RegisterModel(mdl interface{}) error {
 		// Choose Field
 		var field Field
 		fmt.Println(kind)
-		if fieldType, ok := tagMap["Field"]; ok {
+		if fieldType, ok := tagMap["field"]; ok {
 			switch fieldType {
 			case "url":
 				field = &URLField{BaseField: &BaseField{}}
