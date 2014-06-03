@@ -25,6 +25,7 @@ type BaseField struct {
 	label      string
 	columnName string
 	list       bool
+	searchable bool
 }
 
 func (b *BaseField) Configure(tagMap map[string]string) error {

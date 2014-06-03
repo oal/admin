@@ -197,6 +197,10 @@ func (g *modelGroup) RegisterModel(mdl interface{}) error {
 			field.Attrs().list = true
 		}
 
+		if _, ok := tagMap["search"]; ok {
+			field.Attrs().searchable = true
+		}
+
 		am.fields = append(am.fields, field)
 	}
 
@@ -265,6 +269,17 @@ func (m *model) listTableColumns() []string {
 		names = append(names, field.Attrs().columnName)
 	}
 	return names
+}
+
+func (m *model) searchableColumns() []string {
+	cols := []string{}
+	for _, field := range m.fields {
+		if !field.Attrs().searchable {
+			continue
+		}
+		cols = append(cols, field.Attrs().columnName)
+	}
+	return cols
 }
 
 func (m *model) fieldByName(name string) Field {

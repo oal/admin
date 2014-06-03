@@ -13,6 +13,7 @@ import (
 func (a *Admin) render(rw http.ResponseWriter, req *http.Request, tmpl string, ctx map[string]interface{}) {
 	ctx["title"] = a.Title
 	ctx["path"] = a.Path
+	ctx["q"] = req.Form.Get("q")
 	if _, ok := ctx["anonymous"]; !ok {
 		ctx["anonymous"] = false
 	}
@@ -77,7 +78,10 @@ func (a *Admin) handleList(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	results, err := a.queryModel(model)
+	req.ParseForm()
+	q := req.Form.Get("q")
+
+	results, err := a.queryModel(model, q)
 	if err != nil {
 		fmt.Println(err)
 		return

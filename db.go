@@ -1,15 +1,43 @@
 package admin
 
 import (
+	"database/sql"
 	"fmt"
 	"reflect"
 	"strings"
 )
 
 // queryModel is used in list view to display all rows.
-func (a *Admin) queryModel(mdl *model) ([][]interface{}, error) {
-	q := fmt.Sprintf("SELECT id, %v FROM %v", strings.Join(mdl.listTableColumns(), ","), mdl.tableName)
-	rows, err := a.db.Query(q)
+func (a *Admin) queryModel(mdl *model, search string) ([][]interface{}, error) {
+	// Ugly search. Will fix later.
+	qSearch := ""
+	doSearch := false
+	var searchList []interface{}
+	if len(search) > 0 {
+		searchCols := mdl.searchableColumns()
+		if len(searchCols) > 0 {
+			searchList = make([]interface{}, len(searchCols))
+			for i, _ := range searchList {
+				searchList[i] = search
+			}
+			for i, col := range searchCols {
+				searchCols[i] = fmt.Sprintf("%v LIKE ?", col)
+			}
+			qSearch = fmt.Sprintf("WHERE %v", strings.Join(searchCols, " OR "))
+			doSearch = true
+		}
+
+	}
+	q := fmt.Sprintf("SELECT id, %v FROM %v %v", strings.Join(mdl.listTableColumns(), ","), mdl.tableName, qSearch)
+
+	var rows *sql.Rows
+	var err error
+	if doSearch {
+		rows, err = a.db.Query(q, searchList...)
+	} else {
+		rows, err = a.db.Query(q)
+	}
+
 	if err != nil {
 		return nil, err
 	}

@@ -3,8 +3,13 @@
 	<div class="col-sm-5">
 		<h2 class="page-title">{{.name}}</h2>
 	</div>
-	<div class="col-sm-7">
+	<div class="col-sm-5">
 		<a href="new/" class="btn btn-primary pull-right">New <strong>{{.name}}</strong></a>
+	</div>
+	<div class="col-sm-2">
+		<form method="get" action=".">
+			<input type="search" name="q" placeholder="Search..." class="form-control" value="{{.q}}">
+		</form>
 	</div>
 </div>
 <div class="row">
