@@ -32,9 +32,11 @@ type Admin struct {
 
 	SourceDir string
 
-	db          *sql.DB
-	models      map[string]*model
-	modelGroups []*modelGroup
+	db            *sql.DB
+	models        map[string]*model
+	modelGroups   []*modelGroup
+	registeredFKs map[reflect.Type]*model
+	missingFKs    map[*ForeignKeyField]reflect.Type
 }
 
 // Setup registers page handlers and enables the admin.
@@ -71,6 +73,8 @@ func Setup(admin *Admin) (*Admin, error) {
 	// Model init
 	admin.models = map[string]*model{}
 	admin.modelGroups = []*modelGroup{}
+	admin.registeredFKs = map[reflect.Type]*model{}
+	admin.missingFKs = map[*ForeignKeyField]reflect.Type{}
 
 	// Routes
 	sr := admin.Router.PathPrefix(admin.Path).Subrouter()
@@ -145,6 +149,22 @@ func (g *modelGroup) RegisterModel(mdl interface{}) error {
 		instance:  mdl,
 	}
 
+	// Set as registered so it can be used as a ForeignKey from other models
+	if _, ok := g.admin.registeredFKs[t]; !ok {
+		g.admin.registeredFKs[t] = &am
+	}
+
+	// Check if any fields previously registered is missing this model as a foreign key
+	for field, modelType := range g.admin.missingFKs {
+		if modelType != t {
+			continue
+		}
+
+		field.model = &am
+		delete(g.admin.missingFKs, field)
+	}
+
+	// Loop over struct fields and set up fields
 	for i := 0; i < ind.NumField(); i++ {
 		refl := t.Elem().Field(i)
 		fieldType := refl.Type
@@ -177,8 +197,8 @@ func (g *modelGroup) RegisterModel(mdl interface{}) error {
 		// Choose Field
 		var field Field
 		fmt.Println(kind)
-		if fieldType, ok := tagMap["field"]; ok {
-			switch fieldType {
+		if strType, ok := tagMap["field"]; ok {
+			switch strType {
 			case "url":
 				field = &URLField{BaseField: &BaseField{}}
 			default:
@@ -196,8 +216,16 @@ func (g *modelGroup) RegisterModel(mdl interface{}) error {
 				field = &TimeField{BaseField: &BaseField{}}
 			case reflect.Ptr:
 				field = &ForeignKeyField{BaseField: &BaseField{}}
+
+				// Special treatment for foreign keys
+				// We need the field to know what model it's related to
+				if regModel, ok := g.admin.registeredFKs[fieldType]; ok {
+					field.(*ForeignKeyField).model = regModel
+				} else {
+					g.admin.missingFKs[field.(*ForeignKeyField)] = refl.Type
+				}
 			default:
-				fmt.Println("NOOO")
+				fmt.Println("Unknown field type")
 				field = &TextField{BaseField: &BaseField{}}
 			}
 		}
@@ -230,6 +258,8 @@ func (g *modelGroup) RegisterModel(mdl interface{}) error {
 
 	g.admin.models[am.Slug] = &am
 	g.Models = append(g.Models, &am)
+
+	fmt.Println("Registered", am.Name)
 	return nil
 }
 

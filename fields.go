@@ -94,7 +94,9 @@ func (t *ForeignKeyField) Configure(tagMap map[string]string) error {
 }
 
 func (t *ForeignKeyField) Render(w io.Writer, val interface{}, err string) {
-	t.BaseRender(w, "ForeignKey.html", val, err, nil)
+	t.BaseRender(w, "ForeignKey.html", val, err, map[string]interface{}{
+		"modelSlug": t.model.Slug,
+	})
 }
 func (t *ForeignKeyField) Validate(val string) (interface{}, error) {
 	return val, nil
