@@ -49,13 +49,13 @@ type Page struct {
 Struct tag
 ----------
 
-Additional options can be provided in the `admin` struct tag, as in the example above. Currently, these are supported:
+Additional options can be provided in the `admin` struct tag, as in the example above. If more than one is used, separate them by a single space ` `. Multiple word values must be single quoted. Currently, these are supported:
 
--   Skip / hide column: -
--   Show column in list view: list
--   Make column searchable: search
--   Custom label for column: label='Custom name'
--   For time.Time fields: format='01.02.2006'
+-   Skip / hide column: `-`
+-   Show column in list view: `list`
+-   Make column searchable: `search`
+-   Custom label for column: `label='Custom name'`
+-   For time.Time fields: `format='01.02.2006'`
 
 This project is still early in development. More documentation and features will be added over time.
 
