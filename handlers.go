@@ -88,7 +88,14 @@ func (a *Admin) handleList(rw http.ResponseWriter, req *http.Request) {
 	}
 	fmt.Println(results)
 
-	a.render(rw, req, "list.html", map[string]interface{}{
+	var tmpl string
+	if view, ok := vars["view"]; ok && view == "popup" {
+		tmpl = "popup.html"
+	} else {
+		tmpl = "list.html"
+	}
+
+	a.render(rw, req, tmpl, map[string]interface{}{
 		"name":    model.Name,
 		"slug":    slug,
 		"columns": model.listColumns(),

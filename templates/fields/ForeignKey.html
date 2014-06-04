@@ -1,0 +1,11 @@
+<div class="form-group">
+	<label for="{{.name}}">{{.label}}</label>
+	<div class="input-group">
+		<input name="{{.name}}" type="text" value="{{.value}}" class="form-control">
+		<span class="input-group-btn">
+			<button class="btn btn-default btn-fk-search" type="button">Search...</button>
+		</span>
+	</div>
+	{{if .error}}<p class="text-danger">{{.error}}</p>{{end}}
+</div>
+

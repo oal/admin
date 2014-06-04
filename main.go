@@ -9,6 +9,8 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 	"html/template"
 	"io"
+	"net/http"
+	"os"
 	"reflect"
 	"strings"
 )
@@ -28,6 +30,8 @@ type Admin struct {
 	Password string
 	sessions map[string]*session
 
+	SourceDir string
+
 	db          *sql.DB
 	models      map[string]*model
 	modelGroups []*modelGroup
@@ -39,28 +43,46 @@ func Setup(admin *Admin) (*Admin, error) {
 		admin.Title = "Admin"
 	}
 
+	// Users / sessions
 	if len(admin.Username) == 0 || len(admin.Password) == 0 {
 		return nil, errors.New("Username and/or password is missing")
 	}
-
 	admin.sessions = map[string]*session{}
 
+	// Source dir / static / templates
+	if len(admin.SourceDir) == 0 {
+		admin.SourceDir = fmt.Sprintf("%v/src/github.com/oal/admin", os.Getenv("GOPATH"))
+	}
+	staticDir := fmt.Sprintf("%v/static/", admin.SourceDir)
+	if _, err := os.Stat(staticDir); err != nil {
+		return nil, err
+	}
+	if _, err := os.Stat(fmt.Sprintf("%v/templates/", admin.SourceDir)); err != nil {
+		return nil, err
+	}
+
+	// Database
 	db, err := sql.Open("sqlite3", admin.Database)
 	if err != nil {
 		return nil, err
 	}
 	admin.db = db
 
+	// Model init
 	admin.models = map[string]*model{}
 	admin.modelGroups = []*modelGroup{}
 
+	// Routes
 	sr := admin.Router.PathPrefix(admin.Path).Subrouter()
 	sr.StrictSlash(true)
 	sr.HandleFunc("/", admin.handlerWrapper(admin.handleIndex))
 	sr.HandleFunc("/logout/", admin.handlerWrapper(admin.handleLogout))
 	sr.HandleFunc("/model/{slug}/", admin.handlerWrapper(admin.handleList))
 	sr.HandleFunc("/model/{slug}/new/", admin.handlerWrapper(admin.handleEdit))
+	sr.HandleFunc("/model/{slug}/{view}/", admin.handlerWrapper(admin.handleList))
 	sr.HandleFunc("/model/{slug}/edit/{id}/", admin.handlerWrapper(admin.handleEdit))
+	sr.PathPrefix("/static/").Handler(http.StripPrefix("/admin/static/", http.FileServer(http.Dir(staticDir))))
+
 	return admin, nil
 }
 
@@ -172,6 +194,8 @@ func (g *modelGroup) RegisterModel(mdl interface{}) error {
 				field = &FloatField{BaseField: &BaseField{}}
 			case reflect.Struct:
 				field = &TimeField{BaseField: &BaseField{}}
+			case reflect.Ptr:
+				field = &ForeignKeyField{BaseField: &BaseField{}}
 			default:
 				fmt.Println("NOOO")
 				field = &TextField{BaseField: &BaseField{}}

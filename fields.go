@@ -83,6 +83,25 @@ func (t *TextField) Validate(val string) (interface{}, error) {
 	return val, nil
 }
 
+// Foreign key
+type ForeignKeyField struct {
+	*BaseField
+	isTextarea bool
+	MaxLength  int
+}
+
+func (t *ForeignKeyField) Configure(tagMap map[string]string) error {
+	return nil
+}
+
+func (t *ForeignKeyField) Render(w io.Writer, val interface{}, err string) {
+	t.BaseRender(w, "ForeignKey.html", val, err, nil)
+}
+func (t *ForeignKeyField) Validate(val string) (interface{}, error) {
+	return val, nil
+}
+
+// Int field
 type IntField struct {
 	*BaseField
 	step int
