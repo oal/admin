@@ -10,6 +10,8 @@ import (
 	"strings"
 )
 
+var templates *template.Template
+
 func (a *Admin) render(rw http.ResponseWriter, req *http.Request, tmpl string, ctx map[string]interface{}) {
 	ctx["title"] = a.Title
 	ctx["path"] = a.Path

@@ -15,10 +15,6 @@ import (
 	"strings"
 )
 
-var templates, _ = template.ParseGlob(
-	"admin/templates/*.html",
-)
-
 type Admin struct {
 	Router        *mux.Router
 	Path          string
@@ -41,6 +37,22 @@ type Admin struct {
 
 // Setup registers page handlers and enables the admin.
 func Setup(admin *Admin) (*Admin, error) {
+	// Source dir / static / templates
+	if len(admin.SourceDir) == 0 {
+		admin.SourceDir = fmt.Sprintf("%v/src/github.com/oal/admin", os.Getenv("GOPATH"))
+	}
+
+	// Load templates (only once, in case we run multiple admins)
+	if templates == nil {
+		templates = template.Must(template.ParseGlob(
+			fmt.Sprintf("%v/templates/*.html", admin.SourceDir),
+		))
+		fieldTemplates = template.Must(template.ParseGlob(
+			fmt.Sprintf("%v/templates/fields/*.html", admin.SourceDir),
+		))
+	}
+
+	// Title
 	if len(admin.Title) == 0 {
 		admin.Title = "Admin"
 	}
@@ -51,10 +63,6 @@ func Setup(admin *Admin) (*Admin, error) {
 	}
 	admin.sessions = map[string]*session{}
 
-	// Source dir / static / templates
-	if len(admin.SourceDir) == 0 {
-		admin.SourceDir = fmt.Sprintf("%v/src/github.com/oal/admin", os.Getenv("GOPATH"))
-	}
 	staticDir := fmt.Sprintf("%v/static/", admin.SourceDir)
 	if _, err := os.Stat(staticDir); err != nil {
 		return nil, err

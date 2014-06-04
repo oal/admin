@@ -9,9 +9,7 @@ import (
 	"time"
 )
 
-var fieldTemplates, _ = template.ParseGlob(
-	"admin/templates/fields/*.html",
-)
+var fieldTemplates *template.Template
 
 type Field interface {
 	Configure(map[string]string) error
