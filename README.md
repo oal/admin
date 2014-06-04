@@ -3,14 +3,11 @@ Admin
 
 Web based admin interface for Go, inspired by Django admin.
 
-Currently only works with SQLite. WIP. See the example app in /example for a working test app.
+It currently only works with SQLite, but Postgres and MySQL support should be easy to implement. See the example app in /example for a working test app.
 
-Symlink / copy templates (they should be accessible from your-project/admin/templates)
+The code is a bit rough, but feel free to submit pull requests and / or open issues in the issue tracker to discuss or report bugs, feature requests etc.
 
-	ln -s $GOPATH/src/github.com/oal/admin admin
-
-
-Activate like this:
+If you want to try it in your own app, you can activate like this:
 
 ```go
 router := mux.NewRouter()
@@ -40,17 +37,27 @@ A model is just a struct
 ```go
 type Page struct {
 	Id      int    `admin:"-"`
-	Name    string `admin:"list"`
+	Name    string `admin:"list search"`
 	Slug    string
 	Content string    `admin:"list label='Page content'"`
 	Added   time.Time `admin:"list label='Publish date' format='02.01.2006'"`
 }
 ```
 
-
 `NameTransform` is a function that takes a string and returns a string. It's used to transform struct field names to database table names. For example, Beego ORM uses snake case versions of struct fields for table / column names, so it'll convert "CompanyEmployee" to "company_employee". This is optional, so if no `NameTransform` is specified, lookups in the database will use the CamelCase versions like in Go.
 
-A struct / model can contain additional information about its fields in a tag. `admin:"-"` means that this field shouldn't show up when editing data. "list" will make this field show up in the table list for this model. `label` allows you to set a custom, human friendly name for a column / field. Multi word labels must be in single quotes. `time.Time` fields also take an optional `format` string.
+Struct tag
+----------
+
+Additional options can be provided in the `admin` struct tag, as in the example above. Currently, these are supported:
+
+-   Skip / hide column: -
+-   Show column in list view: list
+-   Make column searchable: search
+-   Custom label for column: label='Custom name'
+-   For time.Time fields: format='01.02.2006'
+
+This project is still early in development. More documentation and features will be added over time.
 
 Screenshots
 -----------
