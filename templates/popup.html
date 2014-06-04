@@ -46,7 +46,7 @@
 										{{if ne $i 0}}<td>{{$col}}</td>{{end}}
 									{{end}}
 									<td>
-										<a href="#" class="btn btn-primary btn-block btn-sm">Use</a>
+										<a href="#" class="btn btn-primary btn-block btn-sm btn-use" data-id="{{index $result 0}}">Use</a>
 									</td>
 								</tr>
 							{{end}}
@@ -56,5 +56,15 @@
 			</div>
 		</div>
 	</div>
+
+	<script src="{{.path}}/static/js/jquery.min.js"></script>
+	<script>
+	$(function() {
+		$('.btn-use').on('click', function() {
+			window.opener.document.getElementById(window.name).value = $(this).data('id');
+			window.close();
+		})
+	})
+	</script>
 </body>
 </html>

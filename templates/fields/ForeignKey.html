@@ -1,9 +1,9 @@
 <div class="form-group">
 	<label for="{{.name}}">{{.label}}</label>
 	<div class="input-group">
-		<input name="{{.name}}" type="text" value="{{.value}}" class="form-control">
+		<input id="{{.name}}" name="{{.name}}" type="text" value="{{.value}}" class="form-control">
 		<span class="input-group-btn">
-			<button class="btn btn-default btn-fk-search" type="button">Search...</button>
+			<button class="btn btn-default btn-fk-search" type="button" data-name="{{.name}}" data-slug="company">Search...</button>
 		</span>
 	</div>
 	{{if .error}}<p class="text-danger">{{.error}}</p>{{end}}

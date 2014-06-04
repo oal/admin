@@ -20,12 +20,9 @@
 					</div>
 					<div class="navbar-collapse collapse">
 						{{if eq .anonymous false}}
-						<!--<ul class="nav navbar-nav">
-							<li class="active"><a href="#">Home</a></li>
-						</ul>-->
-						<ul class="nav navbar-nav navbar-right">
-							<li><a href="{{.path}}/logout/">Log out</a></li>
-						</ul>
+							<ul class="nav navbar-nav navbar-right">
+								<li><a href="{{.path}}/logout/">Log out</a></li>
+							</ul>
 						{{end}}
 					</div>
 				</div>
@@ -33,7 +30,10 @@
 			<div class="row">
 				<div class="col-xs-12">
 					{{range .messages}}
-						<div class="alert alert-{{.Class}}">{{.Text}}</div>
+						<div class="alert alert-{{.Class}} alert-dismissable">
+							<button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
+							{{.Text}}
+						</div>
 					{{end}}
 				</div>
 			</div>

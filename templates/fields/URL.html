@@ -1,5 +1,5 @@
 <div class="form-group">
 	<label for="{{.name}}">{{.label}}</label>
-	<input name="{{.name}}" type="url" value="{{.value}}" class="form-control" placeholder="http://">
+	<input id="{{.name}}" name="{{.name}}" type="url" value="{{.value}}" class="form-control" placeholder="http://">
 	{{if .error}}<p class="text-danger">{{.error}}</p>{{end}}
 </div>

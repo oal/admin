@@ -1,5 +1,5 @@
 <div class="form-group">
 	<label for="{{.name}}">{{.label}}</label>
-	<input name="{{.name}}" type="number" step="{{.step}}" min="{{.min}}" max="{{.max}}" value="{{.value}}" class="form-control">
+	<input id="{{.name}}" name="{{.name}}" type="number" step="{{.step}}" min="{{.min}}" max="{{.max}}" value="{{.value}}" class="form-control">
 	{{if .error}}<p class="text-danger">{{.error}}</p>{{end}}
 </div>

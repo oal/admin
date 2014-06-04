@@ -86,8 +86,7 @@ func (t *TextField) Validate(val string) (interface{}, error) {
 // Foreign key
 type ForeignKeyField struct {
 	*BaseField
-	isTextarea bool
-	MaxLength  int
+	model *model
 }
 
 func (t *ForeignKeyField) Configure(tagMap map[string]string) error {
