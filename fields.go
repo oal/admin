@@ -95,10 +95,6 @@ type ForeignKeyField struct {
 	model *model
 }
 
-func (t *ForeignKeyField) Configure(tagMap map[string]string) error {
-	return nil
-}
-
 func (t *ForeignKeyField) Render(w io.Writer, val interface{}, err string, startRow bool) {
 	t.BaseRender(w, "ForeignKey.html", val, err, startRow, map[string]interface{}{
 		"modelSlug": t.model.Slug,
@@ -112,15 +108,12 @@ func (t *ForeignKeyField) Validate(val string) (interface{}, error) {
 type IntField struct {
 	*BaseField
 	step int
-	min  int
-	max  int
+	min  *int
+	max  *int
 }
 
 func (i *IntField) Configure(tagMap map[string]string) error {
 	step := 1
-	min := -100000
-	max := 100000
-
 	if str, ok := tagMap["step"]; ok {
 		var err error
 		step, err = parseInt(str)
@@ -129,24 +122,20 @@ func (i *IntField) Configure(tagMap map[string]string) error {
 		}
 	}
 	if str, ok := tagMap["min"]; ok {
-		var err error
-		min, err = parseInt(str)
+		min, err := parseInt(str)
 		if err != nil {
 			return err
 		}
+		i.min = &min
 	}
 	if str, ok := tagMap["max"]; ok {
-		var err error
-		max, err = parseInt(str)
+		max, err := parseInt(str)
 		if err != nil {
 			return err
 		}
+		i.max = &max
 	}
-
 	i.step = step
-	i.min = min
-	i.max = max
-
 	return nil
 }
 
@@ -166,15 +155,12 @@ func (i *IntField) Validate(val string) (interface{}, error) {
 type FloatField struct {
 	*BaseField
 	step float64
-	min  float64
-	max  float64
+	min  *float64
+	max  *float64
 }
 
 func (f *FloatField) Configure(tagMap map[string]string) error {
-	step := 1.0
-	min := -100000.0
-	max := 100000.0
-
+	step := 0.01
 	if str, ok := tagMap["step"]; ok {
 		var err error
 		step, err = strconv.ParseFloat(str, 64)
@@ -183,24 +169,20 @@ func (f *FloatField) Configure(tagMap map[string]string) error {
 		}
 	}
 	if str, ok := tagMap["min"]; ok {
-		var err error
-		min, err = strconv.ParseFloat(str, 64)
+		min, err := strconv.ParseFloat(str, 64)
 		if err != nil {
 			return err
 		}
+		f.min = &min
 	}
 	if str, ok := tagMap["max"]; ok {
-		var err error
-		max, err = strconv.ParseFloat(str, 64)
+		max, err := strconv.ParseFloat(str, 64)
 		if err != nil {
 			return err
 		}
+		f.max = &max
 	}
-
 	f.step = step
-	f.max = max
-	f.min = min
-
 	return nil
 }
 

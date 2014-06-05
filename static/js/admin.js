@@ -1,4 +1,6 @@
 $(function() {
+	$('input:first').select();
+
 	$('.btn-fk-search').on('click', function() {
 		// TODO: Cleaner way to access routes.
 		var parts = window.location.pathname.split('/model/')[0];
