@@ -3,15 +3,11 @@ package admin
 import (
 	"errors"
 	"fmt"
-	"html/template"
 	"io"
 	"net/url"
 	"strconv"
 	"time"
 )
-
-var fieldTemplates *template.Template
-var fieldWrapperTemplate *template.Template
 
 type Field interface {
 	Configure(map[string]string) error
@@ -45,7 +41,7 @@ func (b *BaseField) BaseRender(w io.Writer, tmpl string, value interface{}, errS
 	ctx["error"] = errStr
 	ctx["tmpl"] = tmpl
 
-	err := fieldWrapperTemplate.Execute(w, ctx)
+	err := templates.ExecuteTemplate(w, "FieldWrapper", ctx)
 	if err != nil {
 		fmt.Println(err)
 	}

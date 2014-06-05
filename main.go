@@ -45,32 +45,11 @@ func Setup(admin *Admin) (*Admin, error) {
 
 	// Load templates (only once, in case we run multiple admins)
 	if templates == nil {
-		templates = template.Must(template.ParseGlob(
-			fmt.Sprintf("%v/templates/*.html", admin.SourceDir),
-		))
-		fieldTemplates = template.Must(template.ParseGlob(
-			fmt.Sprintf("%v/templates/fields/*.html", admin.SourceDir),
-		))
-
-		fieldWrapperTemplate = template.New("fieldWrapper")
-		fieldWrapperTemplate.Funcs(template.FuncMap{
-			"runtemplate": func(name string, ctx interface{}) (template.HTML, error) {
-				var buf bytes.Buffer
-				err := fieldTemplates.Lookup(name).Execute(&buf, ctx)
-				if err != nil {
-					return "", err
-				}
-				return template.HTML(buf.String()), nil
-			},
-		})
-		fieldWrapperTemplate = template.Must(fieldWrapperTemplate.Parse(`
-			<div class="form-group">
-				<label for="{{.name}}">{{.label}}</label>
-				{{runtemplate .tmpl .}}
-				{{if .error}}<p class="text-danger">{{.error}}</p>{{end}}
-			</div>
-		`))
-
+		var err error
+		templates, err = loadTemplates(fmt.Sprintf("%v/templates", admin.SourceDir))
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	// Title
@@ -380,4 +359,42 @@ func (a *Admin) modelURL(slug, action string) string {
 	}
 
 	return fmt.Sprintf("%v/model/%v%v", a.Path, slug, action)
+}
+
+func loadTemplates(path string) (*template.Template, error) {
+	// Pages / views
+	tmpl, err := template.ParseGlob(fmt.Sprintf("%v/*.html", path))
+	if err != nil {
+		return nil, err
+	}
+
+	// Additional functions
+	tmpl.Funcs(template.FuncMap{
+		"runtemplate": func(name string, ctx interface{}) (template.HTML, error) {
+			var buf bytes.Buffer
+			err := templates.Lookup(name).Execute(&buf, ctx)
+			if err != nil {
+				return "", err
+			}
+			return template.HTML(buf.String()), nil
+		},
+	})
+
+	tmpl, err = tmpl.ParseGlob(fmt.Sprintf("%v/fields/*.html", path))
+	if err != nil {
+		return nil, err
+	}
+
+	tmpl, err = tmpl.New("FieldWrapper").Parse(`
+		<div class="form-group">
+			<label for="{{.name}}">{{.label}}</label>
+			{{runtemplate .tmpl .}}
+			{{if .error}}<p class="text-danger">{{.error}}</p>{{end}}
+		</div>
+	`)
+	if err != nil {
+		return nil, err
+	}
+
+	return tmpl, nil
 }
