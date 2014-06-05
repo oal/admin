@@ -29,9 +29,14 @@ func (b *BaseField) Configure(tagMap map[string]string) error {
 	return nil
 }
 
+func (b *BaseField) Validate(val string) (interface{}, error) {
+	return val, nil
+}
+
 func (b *BaseField) Attrs() *BaseField {
 	return b
 }
+
 func (b *BaseField) BaseRender(w io.Writer, tmpl string, value interface{}, errStr string, startRow bool, ctx map[string]interface{}) {
 	if ctx == nil {
 		ctx = map[string]interface{}{}
@@ -41,6 +46,7 @@ func (b *BaseField) BaseRender(w io.Writer, tmpl string, value interface{}, errS
 	ctx["value"] = value
 	ctx["error"] = errStr
 	ctx["tmpl"] = tmpl
+
 	ctx["startrow"] = startRow
 	if b.width == 0 {
 		b.width = 12
@@ -54,7 +60,6 @@ func (b *BaseField) BaseRender(w io.Writer, tmpl string, value interface{}, errS
 }
 
 // Text Field
-
 type TextField struct {
 	*BaseField
 	isTextarea bool
@@ -62,8 +67,8 @@ type TextField struct {
 }
 
 func (t *TextField) Configure(tagMap map[string]string) error {
-	if Field, ok := tagMap["field"]; ok {
-		t.isTextarea = Field == "textarea"
+	if _, ok := tagMap["textarea"]; ok {
+		t.isTextarea = true
 	}
 	if maxLength, ok := tagMap["maxlength"]; ok {
 		length, err := parseInt(maxLength)
@@ -89,7 +94,7 @@ func (t *TextField) Validate(val string) (interface{}, error) {
 	return val, nil
 }
 
-// Foreign key
+// Foreign key field
 type ForeignKeyField struct {
 	*BaseField
 	model *model
@@ -152,6 +157,7 @@ func (i *IntField) Validate(val string) (interface{}, error) {
 	return num, nil
 }
 
+// Float field
 type FloatField struct {
 	*BaseField
 	step float64
@@ -201,8 +207,7 @@ func (f *FloatField) Validate(val string) (interface{}, error) {
 	return num, nil
 }
 
-// URL Field
-
+// URL field
 type URLField struct {
 	*BaseField
 }
@@ -218,8 +223,7 @@ func (n *URLField) Validate(val string) (interface{}, error) {
 	return val, nil
 }
 
-// Time Field
-
+// Time field
 type TimeField struct {
 	*BaseField
 	Format string
@@ -248,4 +252,21 @@ func (n *TimeField) Validate(val string) (interface{}, error) {
 		return nil, err
 	}
 	return t, nil
+}
+
+// Boolean field
+type BooleanField struct {
+	*BaseField
+}
+
+func (b *BooleanField) Render(w io.Writer, val interface{}, err string, startRow bool) {
+	b.BaseRender(w, "Boolean.html", val, err, startRow, nil)
+}
+
+func (b *BooleanField) Validate(val string) (interface{}, error) {
+	bl, err := strconv.ParseBool(val)
+	if err != nil {
+		return false, nil
+	}
+	return bl, nil
 }

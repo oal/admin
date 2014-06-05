@@ -204,39 +204,32 @@ func (g *modelGroup) RegisterModel(mdl interface{}) error {
 
 		// Choose Field
 		var field Field
-		fmt.Println(kind)
-		if strType, ok := tagMap["field"]; ok {
-			switch strType {
-			case "url":
-				field = &URLField{BaseField: &BaseField{}}
-			default:
-				field = &TextField{BaseField: &BaseField{}}
-			}
-		} else {
-			switch kind {
-			case reflect.String:
-				field = &TextField{BaseField: &BaseField{}}
-			case reflect.Int, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Uint, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-				field = &IntField{BaseField: &BaseField{}}
-			case reflect.Float32, reflect.Float64:
-				field = &FloatField{BaseField: &BaseField{}}
-			case reflect.Struct:
-				field = &TimeField{BaseField: &BaseField{}}
-			case reflect.Ptr:
-				field = &ForeignKeyField{BaseField: &BaseField{}}
+		switch kind {
+		case reflect.String:
+			field = &TextField{BaseField: &BaseField{}}
+		case reflect.Int, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Uint, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+			field = &IntField{BaseField: &BaseField{}}
+		case reflect.Float32, reflect.Float64:
+			field = &FloatField{BaseField: &BaseField{}}
+		case reflect.Bool:
+			field = &BooleanField{BaseField: &BaseField{}}
+		case reflect.Struct:
+			field = &TimeField{BaseField: &BaseField{}}
+		case reflect.Ptr:
+			field = &ForeignKeyField{BaseField: &BaseField{}}
 
-				// Special treatment for foreign keys
-				// We need the field to know what model it's related to
-				if regModel, ok := g.admin.registeredFKs[fieldType]; ok {
-					field.(*ForeignKeyField).model = regModel
-				} else {
-					g.admin.missingFKs[field.(*ForeignKeyField)] = refl.Type
-				}
-			default:
-				fmt.Println("Unknown field type")
-				field = &TextField{BaseField: &BaseField{}}
+			// Special treatment for foreign keys
+			// We need the field to know what model it's related to
+			if regModel, ok := g.admin.registeredFKs[fieldType]; ok {
+				field.(*ForeignKeyField).model = regModel
+			} else {
+				g.admin.missingFKs[field.(*ForeignKeyField)] = refl.Type
 			}
+		default:
+			fmt.Println("Unknown field type")
+			field = &TextField{BaseField: &BaseField{}}
 		}
+
 		field.Attrs().name = fieldName
 
 		// Read relevant config options from the tagMap

@@ -18,10 +18,11 @@ type Category struct {
 
 type BlogPost struct {
 	Id        int       `orm:"auto" admin:"-"`
-	Category  *Category `orm:"rel(fk)" admin:"list"`
-	Title     string    `admin:"list search"`
-	Body      string    `orm:"type(text)" admin:"field=textarea"`
-	Published time.Time `admin:"list"`
+	Category  *Category `orm:"rel(fk)" admin:"list width=3"`
+	Title     string    `admin:"list search width=9"`
+	Body      string    `orm:"type(text)" admin:"textarea"`
+	Published time.Time `admin:"list width=11"`
+	Draft     bool      `admin:"list width=1"`
 }
 
 func (b *BlogPost) AdminName() string {
