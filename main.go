@@ -260,7 +260,13 @@ func (g *modelGroup) RegisterModel(mdl interface{}) error {
 		if _, ok := tagMap["search"]; ok {
 			field.Attrs().searchable = true
 		}
-
+		if width, ok := tagMap["width"]; ok {
+			i, err := parseInt(width)
+			if err != nil {
+				panic(err)
+			}
+			field.Attrs().width = i
+		}
 		am.fields = append(am.fields, field)
 	}
 
@@ -282,6 +288,7 @@ type model struct {
 func (m *model) renderForm(w io.Writer, data []interface{}, errors []string) {
 	hasData := len(data) == len(m.fieldNames())
 	var val interface{}
+	activeCol := 0
 	for i, fieldName := range m.fieldNames() {
 		if hasData {
 			val = data[i]
@@ -291,7 +298,8 @@ func (m *model) renderForm(w io.Writer, data []interface{}, errors []string) {
 			err = errors[i]
 		}
 		field := m.fieldByName(fieldName)
-		field.Render(w, val, err)
+		field.Render(w, val, err, activeCol%12 == 0)
+		activeCol += field.Attrs().width
 	}
 }
 
@@ -386,10 +394,13 @@ func loadTemplates(path string) (*template.Template, error) {
 	}
 
 	tmpl, err = tmpl.New("FieldWrapper").Parse(`
-		<div class="form-group">
-			<label for="{{.name}}">{{.label}}</label>
-			{{runtemplate .tmpl .}}
-			{{if .error}}<p class="text-danger">{{.error}}</p>{{end}}
+		{{if .startrow}}</div><div class="row">{{end}}
+		<div class="col-sm-{{.width}}">
+			<div class="form-group">
+				<label for="{{.name}}">{{.label}}</label>
+				{{runtemplate .tmpl .}}
+				{{if .error}}<p class="text-danger">{{.error}}</p>{{end}}
+			</div>
 		</div>
 	`)
 	if err != nil {

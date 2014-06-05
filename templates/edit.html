@@ -4,7 +4,9 @@
 		<h2>{{if eq .id 0}}New{{else}}Edit{{end}} <strong>{{.name}}</strong></h2>
 		<div class="well">
 			<form method="post">
+				<div class="row">
 				{{.form}}
+				</div>
 				<button name="done" value="true" class="btn btn-primary" type="submit">Save</button>
 				{{if .id}}<button name="done" value="false" class="btn btn-default" type="submit">Save and continue editing</button>{{end}}
 			</form>

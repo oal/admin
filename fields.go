@@ -11,7 +11,7 @@ import (
 
 type Field interface {
 	Configure(map[string]string) error
-	Render(io.Writer, interface{}, string)
+	Render(w io.Writer, val interface{}, err string, startRow bool)
 	Validate(string) (interface{}, error)
 	Attrs() *BaseField
 }
@@ -22,6 +22,7 @@ type BaseField struct {
 	columnName string
 	list       bool
 	searchable bool
+	width      int
 }
 
 func (b *BaseField) Configure(tagMap map[string]string) error {
@@ -31,7 +32,7 @@ func (b *BaseField) Configure(tagMap map[string]string) error {
 func (b *BaseField) Attrs() *BaseField {
 	return b
 }
-func (b *BaseField) BaseRender(w io.Writer, tmpl string, value interface{}, errStr string, ctx map[string]interface{}) {
+func (b *BaseField) BaseRender(w io.Writer, tmpl string, value interface{}, errStr string, startRow bool, ctx map[string]interface{}) {
 	if ctx == nil {
 		ctx = map[string]interface{}{}
 	}
@@ -40,6 +41,11 @@ func (b *BaseField) BaseRender(w io.Writer, tmpl string, value interface{}, errS
 	ctx["value"] = value
 	ctx["error"] = errStr
 	ctx["tmpl"] = tmpl
+	ctx["startrow"] = startRow
+	if b.width == 0 {
+		b.width = 12
+	}
+	ctx["width"] = b.width
 
 	err := templates.ExecuteTemplate(w, "FieldWrapper", ctx)
 	if err != nil {
@@ -69,12 +75,12 @@ func (t *TextField) Configure(tagMap map[string]string) error {
 	return nil
 }
 
-func (t *TextField) Render(w io.Writer, val interface{}, err string) {
+func (t *TextField) Render(w io.Writer, val interface{}, err string, startRow bool) {
 	tmpl := "TextField.html"
 	if t.isTextarea {
 		tmpl = "Textarea.html"
 	}
-	t.BaseRender(w, tmpl, val, err, nil)
+	t.BaseRender(w, tmpl, val, err, startRow, nil)
 }
 func (t *TextField) Validate(val string) (interface{}, error) {
 	if t.MaxLength != 0 && len(val) > t.MaxLength {
@@ -93,8 +99,8 @@ func (t *ForeignKeyField) Configure(tagMap map[string]string) error {
 	return nil
 }
 
-func (t *ForeignKeyField) Render(w io.Writer, val interface{}, err string) {
-	t.BaseRender(w, "ForeignKey.html", val, err, map[string]interface{}{
+func (t *ForeignKeyField) Render(w io.Writer, val interface{}, err string, startRow bool) {
+	t.BaseRender(w, "ForeignKey.html", val, err, startRow, map[string]interface{}{
 		"modelSlug": t.model.Slug,
 	})
 }
@@ -144,8 +150,8 @@ func (i *IntField) Configure(tagMap map[string]string) error {
 	return nil
 }
 
-func (i *IntField) Render(w io.Writer, val interface{}, err string) {
-	i.BaseRender(w, "Number.html", val, err, map[string]interface{}{
+func (i *IntField) Render(w io.Writer, val interface{}, err string, startRow bool) {
+	i.BaseRender(w, "Number.html", val, err, startRow, map[string]interface{}{
 		"step": i.step,
 	})
 }
@@ -198,8 +204,8 @@ func (f *FloatField) Configure(tagMap map[string]string) error {
 	return nil
 }
 
-func (f *FloatField) Render(w io.Writer, val interface{}, err string) {
-	f.BaseRender(w, "Number.html", val, err, map[string]interface{}{
+func (f *FloatField) Render(w io.Writer, val interface{}, err string, startRow bool) {
+	f.BaseRender(w, "Number.html", val, err, startRow, map[string]interface{}{
 		"step": f.step,
 		"min":  f.min,
 		"max":  f.max,
@@ -219,8 +225,8 @@ type URLField struct {
 	*BaseField
 }
 
-func (n *URLField) Render(w io.Writer, val interface{}, err string) {
-	n.BaseRender(w, "URL.html", val, err, nil)
+func (n *URLField) Render(w io.Writer, val interface{}, err string, startRow bool) {
+	n.BaseRender(w, "URL.html", val, err, startRow, nil)
 }
 func (n *URLField) Validate(val string) (interface{}, error) {
 	_, err := url.Parse(val)
@@ -245,12 +251,12 @@ func (n *TimeField) Configure(tagMap map[string]string) error {
 	return nil
 }
 
-func (n *TimeField) Render(w io.Writer, val interface{}, err string) {
+func (n *TimeField) Render(w io.Writer, val interface{}, err string, startRow bool) {
 	formatted := ""
 	if t, ok := val.(time.Time); ok {
 		formatted = t.Format(n.Format)
 	}
-	n.BaseRender(w, "Time.html", formatted, err, map[string]interface{}{
+	n.BaseRender(w, "Time.html", formatted, err, startRow, map[string]interface{}{
 		"format": n.Format,
 	})
 }

@@ -36,9 +36,9 @@ A model is just a struct
 
 ```go
 type Page struct {
-	Id      int    `admin:"-"`
-	Name    string `admin:"list search"`
-	Slug    string
+	Id      int       `admin:"-"`
+	Name    string    `admin:"list search width=6"` // Listed, searchable and half width (12 columns is full width)
+	Slug    string    `admin:"list search width=6"` // Listed, searchable and half width (displayed to the right of Name in edit form)
 	Content string    `admin:"list label='Page content'"`
 	Added   time.Time `admin:"list label='Publish date' format='02.01.2006'"`
 }
@@ -56,6 +56,7 @@ Additional options can be provided in the `admin` struct tag, as in the example 
 -   Make column searchable: `search`
 -   Custom label for column: `label='Custom name'`
 -   For time.Time fields: `format='01.02.2006'`
+-   Custom field width / column width `width=4` (Optional, if not specified, 12 / full width is default.)
 
 This project is still early in development. More documentation and features will be added over time.
 
