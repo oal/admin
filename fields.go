@@ -17,12 +17,13 @@ type Field interface {
 }
 
 type BaseField struct {
-	name       string
-	label      string
-	columnName string
-	list       bool
-	searchable bool
-	width      int
+	name         string
+	label        string
+	defaultValue interface{}
+	columnName   string
+	list         bool
+	searchable   bool
+	width        int
 }
 
 func (b *BaseField) Configure(tagMap map[string]string) error {

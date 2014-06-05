@@ -55,6 +55,7 @@ Additional options can be provided in the `admin` struct tag, as in the example 
 -   Show column in list view: `list`
 -   Make column searchable: `search`
 -   Custom label for column: `label='Custom name'`
+-   Default value in "new"/"create" form: `default='My default value'`
 -   Custom field width / column width `width=4` (Optional, if not specified, 12 / full width is default.)
 -   For time.Time fields: `format='01.02.2006'`
 -   For text fields / string: `textarea` to display field as a <textarea> instead of an <input>

@@ -13,7 +13,7 @@ import (
 type Category struct {
 	Id          int    `orm:"auto" admin:"-"`
 	Title       string `admin:"list search"`
-	Description string `admin:"list"`
+	Description string `admin:"list default='No description.'"`
 }
 
 type BlogPost struct {

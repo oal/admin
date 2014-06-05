@@ -130,12 +130,12 @@ type namedModel interface {
 
 // RegisterModel adds a model to a model group.
 func (g *modelGroup) RegisterModel(mdl interface{}) error {
-	t := reflect.TypeOf(mdl)
+	modelType := reflect.TypeOf(mdl)
 
 	val := reflect.ValueOf(mdl)
 	ind := reflect.Indirect(val)
 
-	parts := strings.Split(t.String(), ".")
+	parts := strings.Split(modelType.String(), ".")
 	name := parts[len(parts)-1]
 
 	var tableName string
@@ -158,13 +158,13 @@ func (g *modelGroup) RegisterModel(mdl interface{}) error {
 	}
 
 	// Set as registered so it can be used as a ForeignKey from other models
-	if _, ok := g.admin.registeredFKs[t]; !ok {
-		g.admin.registeredFKs[t] = &am
+	if _, ok := g.admin.registeredFKs[modelType]; !ok {
+		g.admin.registeredFKs[modelType] = &am
 	}
 
 	// Check if any fields previously registered is missing this model as a foreign key
 	for field, modelType := range g.admin.missingFKs {
-		if modelType != t {
+		if modelType != modelType {
 			continue
 		}
 
@@ -174,15 +174,15 @@ func (g *modelGroup) RegisterModel(mdl interface{}) error {
 
 	// Loop over struct fields and set up fields
 	for i := 0; i < ind.NumField(); i++ {
-		refl := t.Elem().Field(i)
+		refl := modelType.Elem().Field(i)
 		fieldType := refl.Type
 		kind := fieldType.Kind()
+
+		// Parse key=val / key options from struct tag, used for configuration later
 		tag := refl.Tag.Get("admin")
 		if tag == "-" {
 			continue
 		}
-
-		// Parse key=val / key options from struct tag, used for configuration later
 		tagMap, err := parseTag(tag)
 		if err != nil {
 			panic(err)
@@ -238,13 +238,12 @@ func (g *modelGroup) RegisterModel(mdl interface{}) error {
 			panic(err)
 		}
 
+		field.Attrs().columnName = tableField
 		if label, ok := tagMap["label"]; ok {
 			field.Attrs().label = label
 		} else {
 			field.Attrs().label = fieldName
 		}
-
-		field.Attrs().columnName = tableField
 
 		if _, ok := tagMap["list"]; ok {
 			field.Attrs().list = true
@@ -253,6 +252,11 @@ func (g *modelGroup) RegisterModel(mdl interface{}) error {
 		if _, ok := tagMap["search"]; ok {
 			field.Attrs().searchable = true
 		}
+
+		if val, ok := tagMap["default"]; ok {
+			field.Attrs().defaultValue = val
+		}
+
 		if width, ok := tagMap["width"]; ok {
 			i, err := parseInt(width)
 			if err != nil {
@@ -260,6 +264,7 @@ func (g *modelGroup) RegisterModel(mdl interface{}) error {
 			}
 			field.Attrs().width = i
 		}
+
 		am.fields = append(am.fields, field)
 	}
 
@@ -278,19 +283,24 @@ type model struct {
 	instance  interface{}
 }
 
-func (m *model) renderForm(w io.Writer, data []interface{}, errors []string) {
+func (m *model) renderForm(w io.Writer, data []interface{}, defaults bool, errors []string) {
 	hasData := len(data) == len(m.fieldNames())
 	var val interface{}
 	activeCol := 0
 	for i, fieldName := range m.fieldNames() {
+		field := m.fieldByName(fieldName)
 		if hasData {
 			val = data[i]
+		} else if defaults {
+			val = field.Attrs().defaultValue
 		}
+
+		// Error text displayed below field, if any
 		var err string
 		if errors != nil {
 			err = errors[i]
 		}
-		field := m.fieldByName(fieldName)
+
 		field.Render(w, val, err, activeCol%12 == 0)
 		activeCol += field.Attrs().width
 	}
