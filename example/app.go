@@ -18,10 +18,10 @@ type Category struct {
 
 type BlogPost struct {
 	Id        int       `orm:"auto" admin:"-"`
-	Category  *Category `orm:"rel(fk)"`
+	Category  *Category `orm:"rel(fk)" admin:"list"`
 	Title     string    `admin:"list search"`
 	Body      string    `orm:"type(text)" admin:"field=textarea"`
-	Published time.Time
+	Published time.Time `admin:"list"`
 }
 
 func (b *BlogPost) AdminName() string {

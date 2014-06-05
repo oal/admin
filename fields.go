@@ -2,6 +2,7 @@ package admin
 
 import (
 	"errors"
+	"fmt"
 	"html/template"
 	"io"
 	"net/url"
@@ -10,6 +11,7 @@ import (
 )
 
 var fieldTemplates *template.Template
+var fieldWrapperTemplate *template.Template
 
 type Field interface {
 	Configure(map[string]string) error
@@ -33,16 +35,20 @@ func (b *BaseField) Configure(tagMap map[string]string) error {
 func (b *BaseField) Attrs() *BaseField {
 	return b
 }
-func (b *BaseField) BaseRender(w io.Writer, tmpl string, value interface{}, err string, ctx map[string]interface{}) {
+func (b *BaseField) BaseRender(w io.Writer, tmpl string, value interface{}, errStr string, ctx map[string]interface{}) {
 	if ctx == nil {
 		ctx = map[string]interface{}{}
 	}
 	ctx["label"] = b.label
 	ctx["name"] = b.name
 	ctx["value"] = value
-	ctx["error"] = err
+	ctx["error"] = errStr
+	ctx["tmpl"] = tmpl
 
-	fieldTemplates.ExecuteTemplate(w, tmpl, ctx)
+	err := fieldWrapperTemplate.Execute(w, ctx)
+	if err != nil {
+		fmt.Println(err)
+	}
 }
 
 // Text Field

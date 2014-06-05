@@ -1,6 +1,7 @@
 package admin
 
 import (
+	"bytes"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -50,6 +51,26 @@ func Setup(admin *Admin) (*Admin, error) {
 		fieldTemplates = template.Must(template.ParseGlob(
 			fmt.Sprintf("%v/templates/fields/*.html", admin.SourceDir),
 		))
+
+		fieldWrapperTemplate = template.New("fieldWrapper")
+		fieldWrapperTemplate.Funcs(template.FuncMap{
+			"runtemplate": func(name string, ctx interface{}) (template.HTML, error) {
+				var buf bytes.Buffer
+				err := fieldTemplates.Lookup(name).Execute(&buf, ctx)
+				if err != nil {
+					return "", err
+				}
+				return template.HTML(buf.String()), nil
+			},
+		})
+		fieldWrapperTemplate = template.Must(fieldWrapperTemplate.Parse(`
+			<div class="form-group">
+				<label for="{{.name}}">{{.label}}</label>
+				{{runtemplate .tmpl .}}
+				{{if .error}}<p class="text-danger">{{.error}}</p>{{end}}
+			</div>
+		`))
+
 	}
 
 	// Title
