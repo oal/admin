@@ -11,13 +11,13 @@ import (
 )
 
 type Category struct {
-	Id          int    `orm:"auto" admin:"-"`
+	Id          int    `orm:"auto"`
 	Title       string `admin:"list search"`
 	Description string `admin:"list default='No description.'"`
 }
 
 type BlogPost struct {
-	Id        int       `orm:"auto" admin:"-"`
+	Id        int       `orm:"auto" admin:"list"`
 	Category  *Category `orm:"rel(fk)" admin:"list width=3"`
 	Title     string    `admin:"list search width=9"`
 	Body      string    `orm:"type(text)" admin:"textarea"`

@@ -51,14 +51,14 @@ Struct tag
 
 Additional options can be provided in the `admin` struct tag, as in the example above. If more than one is used, separate them by a single space ` `. Multiple word values must be single quoted. Currently, these are supported:
 
--   Skip / hide column: `-`
--   Show column in list view: `list`
--   Make column searchable: `search`
--   Custom label for column: `label='Custom name'`
--   Default value in "new"/"create" form: `default='My default value'`
--   Custom field width / column width `width=4` (Optional, if not specified, 12 / full width is default.)
--   For time.Time fields: `format='01.02.2006'`
--   For text fields / string: `textarea` to display field as a <textarea> instead of an <input>
+-   `-` Skip / hide column
+-   `list` Show column in list view
+-   `search` Make column searchable
+-   `label='Custom name'` Custom label for column
+-   `default='My default value'` Default value in "new"/"create" form
+-   `width=4` Custom field width / column width (Optional, if not specified, 12 / full width is default.)
+-   `format='01.02.2006'` For time.Time fields
+-   `textarea` Used by string / text field to display field as a <textarea> instead of an <input>
 
 This project is still early in development. More documentation and features will be added over time.
 

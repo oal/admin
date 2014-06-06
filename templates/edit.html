@@ -1,7 +1,14 @@
 {{template "header.html" .}}
 <div class="row">
+	<div class="col-sm-8">
+		<h2 class="page-title">{{if eq .id 0}}New{{else}}Edit{{end}} <strong>{{.name}}</strong></h2>
+	</div>
+	<div class="col-sm-4">
+		<a href="{{.path}}/model/{{.slug}}/" class="btn btn-primary pull-right">Back</a>
+	</div>
+</div>
+<div class="row">
 	<div class="col-xs-12">
-		<h2>{{if eq .id 0}}New{{else}}Edit{{end}} <strong>{{.name}}</strong></h2>
 		<div class="well">
 			<form method="post">
 				<div class="row">

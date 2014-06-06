@@ -102,6 +102,7 @@ func (a *Admin) handleList(rw http.ResponseWriter, req *http.Request) {
 		"slug":    slug,
 		"columns": model.listColumns(),
 		"results": results,
+		"skipId":  model.listTableColumns()[0] != "id",
 	})
 }
 
@@ -156,6 +157,7 @@ func (a *Admin) handleEdit(rw http.ResponseWriter, req *http.Request) {
 	a.render(rw, req, "edit.html", map[string]interface{}{
 		"id":   id,
 		"name": model.Name,
+		"slug": model.Slug,
 		"form": template.HTML(buf.String()),
 	})
 }
