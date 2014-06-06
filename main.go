@@ -318,13 +318,10 @@ type model struct {
 }
 
 func (m *model) renderForm(w io.Writer, data []interface{}, defaults bool, errors []string) {
-	hasData := len(data) == len(m.fieldNames)
+	hasData := len(data) == len(m.fieldNames[1:])
 	var val interface{}
 	activeCol := 0
-	for i, fieldName := range m.fieldNames {
-		if i == 0 {
-			continue
-		}
+	for i, fieldName := range m.fieldNames[1:] {
 		field := m.fieldByName(fieldName)
 		if hasData {
 			val = data[i]

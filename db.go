@@ -60,8 +60,8 @@ func (a *Admin) queryModel(mdl *model, search string) ([][]interface{}, error) {
 
 // querySingleModel is used in edit view.
 func (a *Admin) querySingleModel(mdl *model, id int) ([]interface{}, error) {
-	numCols := len(mdl.fieldNames) + 1
-	q := fmt.Sprintf("SELECT id, %v FROM %v WHERE id = ?", strings.Join(mdl.tableColumns, ","), mdl.tableName)
+	numCols := len(mdl.fieldNames)
+	q := fmt.Sprintf("SELECT %v FROM %v WHERE id = ?", strings.Join(mdl.tableColumns, ","), mdl.tableName)
 	row := a.db.QueryRow(q, id)
 
 	result, err := scanRow(numCols, row)

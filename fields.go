@@ -246,7 +246,7 @@ type TimeField struct {
 }
 
 func (n *TimeField) Configure(tagMap map[string]string) error {
-	n.Format = "2006-02-01"
+	n.Format = "2006-02-01 15:04"
 	if format, ok := tagMap["format"]; ok {
 		n.Format = format
 	}
