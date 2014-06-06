@@ -181,6 +181,9 @@ func (g *modelGroup) RegisterModel(mdl interface{}) error {
 		// Parse key=val / key options from struct tag, used for configuration later
 		tag := refl.Tag.Get("admin")
 		if tag == "-" {
+			if i == 0 {
+				return errors.New("First column (id) can't be skipped.")
+			}
 			continue
 		}
 		tagMap, err := parseTag(tag)
@@ -203,31 +206,41 @@ func (g *modelGroup) RegisterModel(mdl interface{}) error {
 		}
 
 		// Choose Field
+		// First, check if we want to override a field, otherwise use one of the defaults
 		var field Field
-		switch kind {
-		case reflect.String:
-			field = &TextField{BaseField: &BaseField{}}
-		case reflect.Int, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Uint, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-			field = &IntField{BaseField: &BaseField{}}
-		case reflect.Float32, reflect.Float64:
-			field = &FloatField{BaseField: &BaseField{}}
-		case reflect.Bool:
-			field = &BooleanField{BaseField: &BaseField{}}
-		case reflect.Struct:
-			field = &TimeField{BaseField: &BaseField{}}
-		case reflect.Ptr:
-			field = &ForeignKeyField{BaseField: &BaseField{}}
+		overrideField, ok := tagMap["field"]
+		if customField, ok2 := customFields[overrideField]; ok && ok2 {
+			customType := reflect.ValueOf(customField).Elem().Type()
+			newField := reflect.New(customType)
+			baseField := newField.Elem().Field(0)
+			baseField.Set(reflect.ValueOf(&BaseField{}))
+			field = newField.Interface().(Field)
+		} else {
+			switch kind {
+			case reflect.String:
+				field = &TextField{BaseField: &BaseField{}}
+			case reflect.Int, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Uint, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+				field = &IntField{BaseField: &BaseField{}}
+			case reflect.Float32, reflect.Float64:
+				field = &FloatField{BaseField: &BaseField{}}
+			case reflect.Bool:
+				field = &BooleanField{BaseField: &BaseField{}}
+			case reflect.Struct:
+				field = &TimeField{BaseField: &BaseField{}}
+			case reflect.Ptr:
+				field = &ForeignKeyField{BaseField: &BaseField{}}
 
-			// Special treatment for foreign keys
-			// We need the field to know what model it's related to
-			if regModel, ok := g.admin.registeredFKs[fieldType]; ok {
-				field.(*ForeignKeyField).model = regModel
-			} else {
-				g.admin.missingFKs[field.(*ForeignKeyField)] = refl.Type
+				// Special treatment for foreign keys
+				// We need the field to know what model it's related to
+				if regModel, ok := g.admin.registeredFKs[fieldType]; ok {
+					field.(*ForeignKeyField).model = regModel
+				} else {
+					g.admin.missingFKs[field.(*ForeignKeyField)] = refl.Type
+				}
+			default:
+				fmt.Println("Unknown field type")
+				field = &TextField{BaseField: &BaseField{}}
 			}
-		default:
-			fmt.Println("Unknown field type")
-			field = &TextField{BaseField: &BaseField{}}
 		}
 
 		field.Attrs().name = fieldName
@@ -245,7 +258,7 @@ func (g *modelGroup) RegisterModel(mdl interface{}) error {
 			field.Attrs().label = fieldName
 		}
 
-		if _, ok := tagMap["list"]; ok {
+		if _, ok := tagMap["list"]; ok || i == 0 { // ID (i == 0) is always shown
 			field.Attrs().list = true
 		}
 
@@ -342,6 +355,17 @@ func (m *model) listTableColumns() []string {
 		names = append(names, field.Attrs().columnName)
 	}
 	return names
+}
+
+func (m *model) listFields() []Field {
+	fields := []Field{}
+	for _, field := range m.fields {
+		if !field.Attrs().list {
+			continue
+		}
+		fields = append(fields, field)
+	}
+	return fields
 }
 
 func (m *model) searchableColumns() []string {

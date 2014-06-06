@@ -90,6 +90,16 @@ func (a *Admin) handleList(rw http.ResponseWriter, req *http.Request) {
 	}
 	fmt.Println(results)
 
+	strResults := [][]template.HTML{}
+	fields := model.listFields()
+	for _, row := range results {
+		s := make([]template.HTML, len(row))
+		for i, val := range row {
+			s[i] = fields[i].RenderString(val)
+		}
+		strResults = append(strResults, s)
+	}
+
 	var tmpl string
 	if view, ok := vars["view"]; ok && view == "popup" {
 		tmpl = "popup.html"
@@ -101,7 +111,7 @@ func (a *Admin) handleList(rw http.ResponseWriter, req *http.Request) {
 		"name":    model.Name,
 		"slug":    slug,
 		"columns": model.listColumns(),
-		"results": results,
+		"results": strResults,
 		"skipId":  model.listTableColumns()[0] != "id",
 	})
 }

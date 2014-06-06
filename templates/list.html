@@ -28,8 +28,7 @@
 				{{range $result := .results}}
 					<tr>
 						{{range $i, $col := $result}}
-							{{/* First column is always ID, so skip it. */}}
-							{{if eq $i 0}}{{if eq $.skipId false}}<td>{{$col}}</td>{{end}}{{else}}<td>{{$col}}</td>{{end}}
+							<td>{{$col}}</td>
 						{{end}}
 						<td>
 							<a href="edit/{{index $result 0}}" class="btn btn-primary btn-block btn-sm">Edit</a>

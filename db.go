@@ -28,13 +28,9 @@ func (a *Admin) queryModel(mdl *model, search string) ([][]interface{}, error) {
 		}
 
 	}
-	cols := mdl.listTableColumns()
-	// Id is always needed, but remove from cols as it's added automatically
-	if cols[0] == "id" {
-		cols = cols[1:]
-	}
 
-	q := fmt.Sprintf("SELECT id, %v FROM %v %v", strings.Join(cols, ","), mdl.tableName, qSearch)
+	cols := mdl.listTableColumns()
+	q := fmt.Sprintf("SELECT %v FROM %v %v", strings.Join(cols, ","), mdl.tableName, qSearch)
 
 	var rows *sql.Rows
 	var err error
@@ -48,7 +44,7 @@ func (a *Admin) queryModel(mdl *model, search string) ([][]interface{}, error) {
 		return nil, err
 	}
 
-	numCols := len(cols) + 1
+	numCols := len(cols)
 	results := [][]interface{}{}
 
 	for rows.Next() {

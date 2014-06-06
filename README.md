@@ -36,7 +36,7 @@ A model is just a struct
 
 ```go
 type Page struct {
-	Id      int       `admin:"-"`
+	Id      int
 	Name    string    `admin:"list search width=6"` // Listed, searchable and half width (12 columns is full width)
 	Slug    string    `admin:"list search width=6"` // Listed, searchable and half width (displayed to the right of Name in edit form)
 	Content string    `admin:"list textarea label='Page content'"`
@@ -51,7 +51,7 @@ Struct tag
 
 Additional options can be provided in the `admin` struct tag, as in the example above. If more than one is used, separate them by a single space ` `. Multiple word values must be single quoted. Currently, these are supported:
 
--   `-` Skip / hide column
+-   `-` Skip / hide column (id / first column can't be hidden)
 -   `list` Show column in list view
 -   `search` Make column searchable
 -   `label='Custom name'` Custom label for column

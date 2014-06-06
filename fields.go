@@ -3,6 +3,7 @@ package admin
 import (
 	"errors"
 	"fmt"
+	"html/template"
 	"io"
 	"net/url"
 	"strconv"
@@ -12,8 +13,13 @@ import (
 type Field interface {
 	Configure(map[string]string) error
 	Render(w io.Writer, val interface{}, err string, startRow bool)
+	RenderString(val interface{}) template.HTML
 	Validate(string) (interface{}, error)
 	Attrs() *BaseField
+}
+
+var customFields = map[string]Field{
+	"url": &URLField{&BaseField{}},
 }
 
 type BaseField struct {
@@ -32,6 +38,10 @@ func (b *BaseField) Configure(tagMap map[string]string) error {
 
 func (b *BaseField) Validate(val string) (interface{}, error) {
 	return val, nil
+}
+
+func (b *BaseField) RenderString(val interface{}) template.HTML {
+	return template.HTML(template.HTMLEscapeString(fmt.Sprintf("%v", val)))
 }
 
 func (b *BaseField) Attrs() *BaseField {
@@ -216,6 +226,11 @@ type URLField struct {
 func (n *URLField) Render(w io.Writer, val interface{}, err string, startRow bool) {
 	n.BaseRender(w, "URL.html", val, err, startRow, nil)
 }
+
+func (n *URLField) RenderString(val interface{}) template.HTML {
+	return template.HTML(fmt.Sprintf("<a href=\"%v\">%v</a>", val, val))
+}
+
 func (n *URLField) Validate(val string) (interface{}, error) {
 	_, err := url.Parse(val)
 	if err != nil {
@@ -247,6 +262,11 @@ func (n *TimeField) Render(w io.Writer, val interface{}, err string, startRow bo
 		"format": n.Format,
 	})
 }
+
+func (n *TimeField) RenderString(val interface{}) template.HTML {
+	return template.HTML(template.HTMLEscapeString(val.(time.Time).Format(n.Format)))
+}
+
 func (n *TimeField) Validate(val string) (interface{}, error) {
 	t, err := time.Parse(n.Format, val)
 	if err != nil {
