@@ -91,7 +91,7 @@ func (a *Admin) handleList(rw http.ResponseWriter, req *http.Request) {
 	fmt.Println(results)
 
 	strResults := [][]template.HTML{}
-	fields := model.listFields()
+	fields := model.listFields
 	for _, row := range results {
 		s := make([]template.HTML, len(row))
 		for i, val := range row {
@@ -110,9 +110,9 @@ func (a *Admin) handleList(rw http.ResponseWriter, req *http.Request) {
 	a.render(rw, req, tmpl, map[string]interface{}{
 		"name":    model.Name,
 		"slug":    slug,
-		"columns": model.listColumns(),
+		"columns": model.listColumns,
 		"results": strResults,
-		"skipId":  model.listTableColumns()[0] != "id",
+		"skipId":  model.listTableColumns[0] != "id",
 	})
 }
 
@@ -194,7 +194,7 @@ func (a *Admin) handleSave(rw http.ResponseWriter, req *http.Request) ([]interfa
 		}
 	}
 
-	numFields := len(model.fieldNames())
+	numFields := len(model.fieldNames) - 1 // No need for ID.
 
 	// Create query
 	valMarks := strings.Repeat("?, ", numFields)
@@ -204,11 +204,11 @@ func (a *Admin) handleSave(rw http.ResponseWriter, req *http.Request) ([]interfa
 	if id != 0 {
 		keys := make([]string, numFields)
 		for i := 0; i < numFields; i++ {
-			keys[i] = fmt.Sprintf("%v = ?", model.tableColumns()[i])
+			keys[i] = fmt.Sprintf("%v = ?", model.tableColumns[i+1])
 		}
 		q = fmt.Sprintf("UPDATE %v SET %v WHERE id = %v", model.tableName, strings.Join(keys, ", "), id)
 	} else {
-		q = fmt.Sprintf("INSERT INTO %v(%v) VALUES(%v)", model.tableName, strings.Join(model.tableColumns(), ", "), valMarks)
+		q = fmt.Sprintf("INSERT INTO %v(%v) VALUES(%v)", model.tableName, strings.Join(model.tableColumns[1:], ", "), valMarks)
 	}
 
 	// Get data from POST and fill a slice
@@ -216,8 +216,8 @@ func (a *Admin) handleSave(rw http.ResponseWriter, req *http.Request) ([]interfa
 	data := make([]interface{}, numFields)
 	errors := make([]string, numFields)
 	for i := 0; i < numFields; i++ {
-		fieldName := model.fieldByName(model.fieldNames()[i])
-		val, err := fieldName.Validate(req.Form.Get(model.fieldNames()[i]))
+		fieldName := model.fieldByName(model.fieldNames[i+1])
+		val, err := fieldName.Validate(req.Form.Get(model.fieldNames[i+1]))
 		if err != nil {
 			errors[i] = err.Error()
 			hasErrors = true
@@ -233,6 +233,7 @@ func (a *Admin) handleSave(rw http.ResponseWriter, req *http.Request) ([]interfa
 
 	_, err = a.db.Exec(q, data...)
 	if err != nil {
+		fmt.Println(err)
 		return nil, nil
 	}
 

@@ -157,6 +157,13 @@ func (g *modelGroup) RegisterModel(mdl interface{}) error {
 		instance:  mdl,
 	}
 
+	am.fieldNames = []string{}
+	am.tableColumns = []string{}
+	am.listColumns = []string{}
+	am.listTableColumns = []string{}
+	am.listFields = []Field{}
+	am.searchableColumns = []string{}
+
 	// Set as registered so it can be used as a ForeignKey from other models
 	if _, ok := g.admin.registeredFKs[modelType]; !ok {
 		g.admin.registeredFKs[modelType] = &am
@@ -260,10 +267,14 @@ func (g *modelGroup) RegisterModel(mdl interface{}) error {
 
 		if _, ok := tagMap["list"]; ok || i == 0 { // ID (i == 0) is always shown
 			field.Attrs().list = true
+			am.listColumns = append(am.listColumns, fieldName)
+			am.listTableColumns = append(am.listTableColumns, tableField)
+			am.listFields = append(am.listFields, field)
 		}
 
 		if _, ok := tagMap["search"]; ok {
 			field.Attrs().searchable = true
+			am.searchableColumns = append(am.searchableColumns, tableField)
 		}
 
 		if val, ok := tagMap["default"]; ok {
@@ -279,6 +290,9 @@ func (g *modelGroup) RegisterModel(mdl interface{}) error {
 		}
 
 		am.fields = append(am.fields, field)
+
+		am.fieldNames = append(am.fieldNames, fieldName)
+		am.tableColumns = append(am.tableColumns, tableField)
 	}
 
 	g.admin.models[am.Slug] = &am
@@ -294,13 +308,23 @@ type model struct {
 	fields    []Field
 	tableName string
 	instance  interface{}
+
+	fieldNames        []string
+	tableColumns      []string
+	listColumns       []string
+	listTableColumns  []string
+	listFields        []Field
+	searchableColumns []string
 }
 
 func (m *model) renderForm(w io.Writer, data []interface{}, defaults bool, errors []string) {
-	hasData := len(data) == len(m.fieldNames())
+	hasData := len(data) == len(m.fieldNames)
 	var val interface{}
 	activeCol := 0
-	for i, fieldName := range m.fieldNames() {
+	for i, fieldName := range m.fieldNames {
+		if i == 0 {
+			continue
+		}
 		field := m.fieldByName(fieldName)
 		if hasData {
 			val = data[i]
@@ -317,66 +341,6 @@ func (m *model) renderForm(w io.Writer, data []interface{}, defaults bool, error
 		field.Render(w, val, err, activeCol%12 == 0)
 		activeCol += field.Attrs().width
 	}
-}
-
-func (m *model) fieldNames() []string {
-	names := []string{}
-	for _, field := range m.fields {
-		names = append(names, field.Attrs().name)
-	}
-	return names
-}
-
-func (m *model) tableColumns() []string {
-	names := []string{}
-	for _, field := range m.fields {
-		names = append(names, field.Attrs().columnName)
-	}
-	return names
-}
-
-func (m *model) listColumns() []string {
-	names := []string{}
-	for _, field := range m.fields {
-		if !field.Attrs().list {
-			continue
-		}
-		names = append(names, field.Attrs().label)
-	}
-	return names
-}
-
-func (m *model) listTableColumns() []string {
-	names := []string{}
-	for _, field := range m.fields {
-		if !field.Attrs().list {
-			continue
-		}
-		names = append(names, field.Attrs().columnName)
-	}
-	return names
-}
-
-func (m *model) listFields() []Field {
-	fields := []Field{}
-	for _, field := range m.fields {
-		if !field.Attrs().list {
-			continue
-		}
-		fields = append(fields, field)
-	}
-	return fields
-}
-
-func (m *model) searchableColumns() []string {
-	cols := []string{}
-	for _, field := range m.fields {
-		if !field.Attrs().searchable {
-			continue
-		}
-		cols = append(cols, field.Attrs().columnName)
-	}
-	return cols
 }
 
 func (m *model) fieldByName(name string) Field {

@@ -14,7 +14,7 @@ func (a *Admin) queryModel(mdl *model, search string) ([][]interface{}, error) {
 	doSearch := false
 	var searchList []interface{}
 	if len(search) > 0 {
-		searchCols := mdl.searchableColumns()
+		searchCols := mdl.searchableColumns
 		if len(searchCols) > 0 {
 			searchList = make([]interface{}, len(searchCols))
 			for i, _ := range searchList {
@@ -29,7 +29,7 @@ func (a *Admin) queryModel(mdl *model, search string) ([][]interface{}, error) {
 
 	}
 
-	cols := mdl.listTableColumns()
+	cols := mdl.listTableColumns
 	q := fmt.Sprintf("SELECT %v FROM %v %v", strings.Join(cols, ","), mdl.tableName, qSearch)
 
 	var rows *sql.Rows
@@ -60,8 +60,8 @@ func (a *Admin) queryModel(mdl *model, search string) ([][]interface{}, error) {
 
 // querySingleModel is used in edit view.
 func (a *Admin) querySingleModel(mdl *model, id int) ([]interface{}, error) {
-	numCols := len(mdl.fieldNames()) + 1
-	q := fmt.Sprintf("SELECT id, %v FROM %v WHERE id = ?", strings.Join(mdl.tableColumns(), ","), mdl.tableName)
+	numCols := len(mdl.fieldNames) + 1
+	q := fmt.Sprintf("SELECT id, %v FROM %v WHERE id = ?", strings.Join(mdl.tableColumns, ","), mdl.tableName)
 	row := a.db.QueryRow(q, id)
 
 	result, err := scanRow(numCols, row)
