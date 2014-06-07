@@ -268,6 +268,13 @@ func (a *Admin) handleSave(rw http.ResponseWriter, req *http.Request) (map[strin
 		changedData = append(changedData, value)
 	}
 
+	sess := a.getUserSession(req)
+	if len(changedCols) == 0 {
+		sess.addMessage("warning", fmt.Sprintf("%v was not saved because there were no changes.", model.Name))
+		http.Redirect(rw, req, a.modelURL(slug, fmt.Sprintf("/edit/%v", id)), 302)
+		return nil, nil
+	}
+
 	valMarks := strings.Repeat("?, ", len(data))
 	valMarks = valMarks[0 : len(valMarks)-2]
 
@@ -285,7 +292,6 @@ func (a *Admin) handleSave(rw http.ResponseWriter, req *http.Request) (map[strin
 		return nil, nil
 	}
 
-	sess := a.getUserSession(req)
 	sess.addMessage("success", fmt.Sprintf("%v has been saved.", model.Name))
 
 	if req.Form.Get("done") == "true" {

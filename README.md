@@ -59,7 +59,7 @@ Additional options can be provided in the `admin` struct tag, as in the example 
 -   `default='My default value'` Default value in "new"/"create" form
 -   `width=4` Custom field width / column width (Optional, if not specified, 12 / full width is default)
 -   `format='01.02.2006'` For time.Time fields
--   `textarea` Used by string / text field to display field as a <textarea> instead of an <input>
+-   `textarea` Used by string / text field to display field as a textarea instead of an input
 
 This project is still early in development. More documentation and features will be added over time.
 
