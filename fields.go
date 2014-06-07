@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"html/template"
 	"io"
+	"mime/multipart"
 	"net/url"
+	"os"
 	"strconv"
 	"time"
 )
@@ -18,8 +20,13 @@ type Field interface {
 	Attrs() *BaseField
 }
 
+type FileHandlerField interface {
+	HandleFile(*multipart.FileHeader) (string, error)
+}
+
 var customFields = map[string]Field{
-	"url": &URLField{&BaseField{}},
+	"url":  &URLField{&BaseField{}},
+	"file": &FileField{&BaseField{}},
 }
 
 type BaseField struct {
@@ -290,4 +297,35 @@ func (b *BooleanField) Validate(val string) (interface{}, error) {
 		return false, nil
 	}
 	return bl, nil
+}
+
+// File field
+type FileField struct {
+	*BaseField
+}
+
+func (f *FileField) Render(w io.Writer, val interface{}, err string, startRow bool) {
+	f.BaseRender(w, "File.html", val, err, startRow, nil)
+}
+
+func (f *FileField) Validate(val string) (interface{}, error) {
+	fmt.Println(val)
+	return val, nil
+}
+
+func (f *FileField) HandleFile(file *multipart.FileHeader) (string, error) {
+	reader, err := file.Open()
+	if err != nil {
+		return "", err
+	}
+
+	dst, err := os.Create(file.Filename)
+	if err != nil {
+		return "", err
+	}
+
+	io.Copy(dst, reader)
+	dst.Close()
+	reader.Close()
+	return file.Filename, nil
 }

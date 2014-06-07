@@ -173,10 +173,12 @@ func (a *Admin) handleEdit(rw http.ResponseWriter, req *http.Request) {
 }
 
 func (a *Admin) handleSave(rw http.ResponseWriter, req *http.Request) ([]interface{}, []string) {
-	err := req.ParseForm()
+	err := req.ParseMultipartForm(1024 * 1000)
 	if err != nil {
 		return nil, nil
 	}
+	fmt.Println(req.MultipartForm.Value)
+	fmt.Println(req.MultipartForm.File)
 
 	vars := mux.Vars(req)
 	slug := vars["slug"]
@@ -216,8 +218,22 @@ func (a *Admin) handleSave(rw http.ResponseWriter, req *http.Request) ([]interfa
 	data := make([]interface{}, numFields)
 	errors := make([]string, numFields)
 	for i := 0; i < numFields; i++ {
-		fieldName := model.fieldByName(model.fieldNames[i+1])
-		val, err := fieldName.Validate(req.Form.Get(model.fieldNames[i+1]))
+		fieldName := model.fieldNames[i+1]
+		field := model.fieldByName(fieldName)
+		rawValue := req.Form.Get(fieldName)
+		if file, ok := req.MultipartForm.File[fieldName]; rawValue == "" && ok {
+			// Let field handle file
+			fileField, ok := field.(FileHandlerField)
+			if !ok {
+				panic(err)
+			}
+			filename, err := fileField.HandleFile(file[0])
+			if err != nil {
+				panic(err)
+			}
+			rawValue = filename
+		}
+		val, err := field.Validate(rawValue)
 		if err != nil {
 			errors[i] = err.Error()
 			hasErrors = true
