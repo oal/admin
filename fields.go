@@ -26,7 +26,7 @@ type FileHandlerField interface {
 
 var customFields = map[string]Field{
 	"url":  &URLField{&BaseField{}},
-	"file": &FileField{&BaseField{}},
+	"file": &FileField{&BaseField{}, ""},
 }
 
 type BaseField struct {
@@ -302,6 +302,14 @@ func (b *BooleanField) Validate(val string) (interface{}, error) {
 // File field
 type FileField struct {
 	*BaseField
+	UploadTo string
+}
+
+func (f *FileField) Configure(tagMap map[string]string) error {
+	if dir, ok := tagMap["upload_to"]; ok {
+		f.UploadTo = dir
+	}
+	return nil
 }
 
 func (f *FileField) Render(w io.Writer, val interface{}, err string, startRow bool) {
@@ -319,7 +327,16 @@ func (f *FileField) HandleFile(file *multipart.FileHeader) (string, error) {
 		return "", err
 	}
 
-	dst, err := os.Create(file.Filename)
+	filename := file.Filename
+	if len(f.UploadTo) > 0 {
+		_, err := os.Stat(f.UploadTo)
+		if err != nil {
+			os.MkdirAll(f.UploadTo, 0777)
+		}
+		filename = fmt.Sprintf("%v/%v", f.UploadTo, file.Filename)
+	}
+
+	dst, err := os.Create(filename)
 	if err != nil {
 		return "", err
 	}
@@ -327,5 +344,5 @@ func (f *FileField) HandleFile(file *multipart.FileHeader) (string, error) {
 	io.Copy(dst, reader)
 	dst.Close()
 	reader.Close()
-	return file.Filename, nil
+	return filename, nil
 }

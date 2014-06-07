@@ -18,6 +18,8 @@ a, err := admin.Setup(&admin.Admin{
 	Database:      "db.sqlite",
 	NameTransform: snakeString,
 
+	UploadDir: "/path/to/uploads",
+
 	Username: "admin",
 	Password: "password"
 })
@@ -55,6 +57,7 @@ Additional options can be provided in the `admin` struct tag, as in the example 
 -   `list` Show column in list view
 -   `search` Make column searchable
 -   `field=file` Lets you specify a non-default field type. `url` and `file` are currently supported
+    -   `file` also takes an optional `upload_to='some/path'`
 -   `label='Custom name'` Custom label for column
 -   `default='My default value'` Default value in "new"/"create" form
 -   `width=4` Custom field width / column width (Optional, if not specified, 12 / full width is default)
