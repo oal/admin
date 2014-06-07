@@ -158,7 +158,6 @@ func (g *modelGroup) RegisterModel(mdl interface{}) error {
 	}
 
 	am.fieldNames = []string{}
-	am.tableColumns = []string{}
 	am.listColumns = []string{}
 	am.listTableColumns = []string{}
 	am.listFields = []Field{}
@@ -290,9 +289,7 @@ func (g *modelGroup) RegisterModel(mdl interface{}) error {
 		}
 
 		am.fields = append(am.fields, field)
-
 		am.fieldNames = append(am.fieldNames, fieldName)
-		am.tableColumns = append(am.tableColumns, tableField)
 	}
 
 	g.admin.models[am.Slug] = &am
@@ -310,29 +307,27 @@ type model struct {
 	instance  interface{}
 
 	fieldNames        []string
-	tableColumns      []string
 	listColumns       []string
 	listTableColumns  []string
 	listFields        []Field
 	searchableColumns []string
 }
 
-func (m *model) renderForm(w io.Writer, data []interface{}, defaults bool, errors []string) {
-	hasData := len(data) == len(m.fieldNames[1:])
+func (m *model) renderForm(w io.Writer, data map[string]interface{}, defaults bool, errors map[string]string) {
 	var val interface{}
+	var ok bool
 	activeCol := 0
-	for i, fieldName := range m.fieldNames[1:] {
+	for _, fieldName := range m.fieldNames[1:] {
 		field := m.fieldByName(fieldName)
-		if hasData {
-			val = data[i]
-		} else if defaults {
+		val, ok = data[fieldName]
+		if !ok && defaults {
 			val = field.Attrs().defaultValue
 		}
 
 		// Error text displayed below field, if any
 		var err string
 		if errors != nil {
-			err = errors[i]
+			err = errors[fieldName]
 		}
 
 		field.Render(w, val, err, activeCol%12 == 0)

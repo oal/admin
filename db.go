@@ -59,9 +59,19 @@ func (a *Admin) queryModel(mdl *model, search string) ([][]interface{}, error) {
 }
 
 // querySingleModel is used in edit view.
-func (a *Admin) querySingleModel(mdl *model, id int) ([]interface{}, error) {
+func (a *Admin) querySingleModel(mdl *model, id int) (map[string]interface{}, error) {
 	numCols := len(mdl.fieldNames)
-	q := fmt.Sprintf("SELECT %v FROM %v WHERE id = ?", strings.Join(mdl.tableColumns, ","), mdl.tableName)
+
+	// Can't do * as column order in the DB might not match struct
+	cols := make([]string, numCols)
+	for i, fieldName := range mdl.fieldNames {
+		if a.NameTransform != nil {
+			fieldName = a.NameTransform(fieldName)
+		}
+		cols[i] = fieldName
+	}
+
+	q := fmt.Sprintf("SELECT %v FROM %v WHERE id = ?", strings.Join(cols, ", "), mdl.tableName)
 	row := a.db.QueryRow(q, id)
 
 	result, err := scanRow(numCols, row)
@@ -69,7 +79,15 @@ func (a *Admin) querySingleModel(mdl *model, id int) ([]interface{}, error) {
 		return nil, err
 	}
 
-	return result, nil
+	fmt.Println(result)
+
+	resultMap := map[string]interface{}{}
+	for i, val := range result {
+		fmt.Println(i, mdl.fieldNames[i], val)
+		resultMap[mdl.fieldNames[i]] = val
+	}
+
+	return resultMap, nil
 }
 
 // MultiScanner is like the db.Scan interface, but scans to a slice.

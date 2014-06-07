@@ -119,8 +119,8 @@ func (a *Admin) handleList(rw http.ResponseWriter, req *http.Request) {
 func (a *Admin) handleEdit(rw http.ResponseWriter, req *http.Request) {
 	// Set up data and error slices. If we're POSTing, they'll be nil
 	// if no errors were found during validation.
-	var data []interface{}
-	var errors []string
+	var data map[string]interface{}
+	var errors map[string]string
 	if req.Method == "POST" {
 		data, errors = a.handleSave(rw, req)
 		if data == nil {
@@ -157,7 +157,6 @@ func (a *Admin) handleEdit(rw http.ResponseWriter, req *http.Request) {
 			http.NotFound(rw, req)
 			return
 		}
-		data = data[1:]
 	}
 
 	// Render form and template
@@ -172,7 +171,7 @@ func (a *Admin) handleEdit(rw http.ResponseWriter, req *http.Request) {
 	})
 }
 
-func (a *Admin) handleSave(rw http.ResponseWriter, req *http.Request) ([]interface{}, []string) {
+func (a *Admin) handleSave(rw http.ResponseWriter, req *http.Request) (map[string]interface{}, map[string]string) {
 	err := req.ParseMultipartForm(1024 * 1000)
 	if err != nil {
 		return nil, nil
@@ -198,56 +197,77 @@ func (a *Admin) handleSave(rw http.ResponseWriter, req *http.Request) ([]interfa
 
 	numFields := len(model.fieldNames) - 1 // No need for ID.
 
-	// Create query
-	valMarks := strings.Repeat("?, ", numFields)
-	valMarks = valMarks[0 : len(valMarks)-2]
-
-	var q string
-	if id != 0 {
-		keys := make([]string, numFields)
-		for i := 0; i < numFields; i++ {
-			keys[i] = fmt.Sprintf("%v = ?", model.tableColumns[i+1])
-		}
-		q = fmt.Sprintf("UPDATE %v SET %v WHERE id = %v", model.tableName, strings.Join(keys, ", "), id)
-	} else {
-		q = fmt.Sprintf("INSERT INTO %v(%v) VALUES(%v)", model.tableName, strings.Join(model.tableColumns[1:], ", "), valMarks)
-	}
-
 	// Get data from POST and fill a slice
+	data := map[string]interface{}{}
+	errors := map[string]string{}
 	hasErrors := false
-	data := make([]interface{}, numFields)
-	errors := make([]string, numFields)
 	for i := 0; i < numFields; i++ {
 		fieldName := model.fieldNames[i+1]
 		field := model.fieldByName(fieldName)
 		rawValue := req.Form.Get(fieldName)
-		if file, ok := req.MultipartForm.File[fieldName]; rawValue == "" && ok {
-			// Let field handle file
-			fileField, ok := field.(FileHandlerField)
-			if !ok {
-				panic(err)
+
+		// If file field (and no rawValue), handle file
+		if fileField, ok := field.(FileHandlerField); ok {
+			files, ok := req.MultipartForm.File[fieldName]
+			if ok {
+				filename, err := fileField.HandleFile(files[0])
+				if err != nil {
+					panic(err)
+				}
+				rawValue = filename
 			}
-			filename, err := fileField.HandleFile(file[0])
-			if err != nil {
-				panic(err)
-			}
-			rawValue = filename
 		}
+
 		val, err := field.Validate(rawValue)
 		if err != nil {
-			errors[i] = err.Error()
+			errors[fieldName] = err.Error()
 			hasErrors = true
 		}
-		data[i] = val
+
+		if rawValue == "" {
+			continue
+		}
+
+		data[fieldName] = val
 	}
 
 	if hasErrors {
 		return data, errors
 	}
 
+	// Create query
+	changedCols := make([]string, len(data))
+	changedData := make([]interface{}, len(data))
+	i := 0
+	for key, value := range data {
+		col := key
+		if a.NameTransform != nil {
+			col = a.NameTransform(key)
+		}
+		if id != 0 {
+			col = fmt.Sprintf("%v = ?", col)
+		}
+		changedCols[i] = col
+		changedData[i] = value
+		i++
+	}
+
+	valMarks := strings.Repeat("?, ", len(data))
+	valMarks = valMarks[0 : len(valMarks)-2]
+
+	var q string
+	if id != 0 {
+		q = fmt.Sprintf("UPDATE %v SET %v WHERE id = %v", model.tableName, strings.Join(changedCols, ", "), id)
+	} else {
+		q = fmt.Sprintf("INSERT INTO %v(%v) VALUES(%v)", model.tableName, strings.Join(changedCols, ", "), valMarks)
+	}
+
+	fmt.Println(q)
+
 	sess := a.getUserSession(req)
 
-	_, err = a.db.Exec(q, data...)
+	fmt.Println(changedData)
+	_, err = a.db.Exec(q, changedData...)
 	if err != nil {
 		fmt.Println(err)
 		return nil, nil
