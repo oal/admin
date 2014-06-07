@@ -122,8 +122,6 @@ func (a *Admin) handleList(rw http.ResponseWriter, req *http.Request) {
 }
 
 func (a *Admin) handleEdit(rw http.ResponseWriter, req *http.Request) {
-	// Set up data and error slices. If we're POSTing, they'll be nil
-	// if no errors were found during validation.
 	var data map[string]interface{}
 	var errors map[string]string
 	if req.Method == "POST" {
@@ -303,4 +301,44 @@ func (a *Admin) handleSave(rw http.ResponseWriter, req *http.Request) (map[strin
 		http.Redirect(rw, req, a.modelURL(slug, fmt.Sprintf("/edit/%v", id)), 302)
 	}
 	return nil, nil
+}
+
+func (a *Admin) handleDelete(rw http.ResponseWriter, req *http.Request) {
+
+	// The model we're editing
+	vars := mux.Vars(req)
+	slug := vars["slug"]
+
+	model, ok := a.models[slug]
+	if !ok {
+		http.NotFound(rw, req)
+		return
+	}
+
+	id := 0
+	if idStr, ok := vars["id"]; ok {
+		var err error
+		id, err = parseInt(idStr)
+		if err != nil {
+			return
+		}
+	}
+
+	_, err := a.querySingleModel(model, id)
+	if err != nil {
+		http.NotFound(rw, req)
+		return
+	}
+
+	q := fmt.Sprintf("DELETE FROM %v WHERE id=?", model.tableName)
+	_, err = a.db.Exec(q, id)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	sess := a.getUserSession(req)
+	sess.addMessage("success", fmt.Sprintf("%v has been deleted.", model.Name))
+	http.Redirect(rw, req, a.modelURL(slug, ""), 302)
+	return
 }

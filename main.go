@@ -93,6 +93,7 @@ func Setup(admin *Admin) (*Admin, error) {
 	sr.HandleFunc("/model/{slug}/new/", admin.handlerWrapper(admin.handleEdit))
 	sr.HandleFunc("/model/{slug}/{view}/", admin.handlerWrapper(admin.handleList))
 	sr.HandleFunc("/model/{slug}/edit/{id}/", admin.handlerWrapper(admin.handleEdit))
+	sr.HandleFunc("/model/{slug}/delete/{id}/", admin.handlerWrapper(admin.handleDelete))
 	sr.PathPrefix("/static/").Handler(http.StripPrefix("/admin/static/", http.FileServer(http.Dir(staticDir))))
 
 	return admin, nil
