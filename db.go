@@ -14,14 +14,14 @@ func (a *Admin) queryModel(mdl *model, search string) ([][]interface{}, error) {
 	doSearch := false
 	var searchList []interface{}
 	if len(search) > 0 {
-		searchCols := mdl.searchableColumns
-		if len(searchCols) > 0 {
+		if len(mdl.searchableColumns) > 0 {
+			searchCols := make([]string, len(mdl.searchableColumns))
 			searchList = make([]interface{}, len(searchCols))
 			for i, _ := range searchList {
 				searchList[i] = search
 			}
-			for i, col := range searchCols {
-				searchCols[i] = fmt.Sprintf("%v LIKE ?", col)
+			for i, _ := range searchCols {
+				searchCols[i] = fmt.Sprintf("%v LIKE ?", mdl.searchableColumns[i])
 			}
 			qSearch = fmt.Sprintf("WHERE %v", strings.Join(searchCols, " OR "))
 			doSearch = true
