@@ -18,8 +18,6 @@ a, err := admin.Setup(&admin.Admin{
 	Database:      "db.sqlite",
 	NameTransform: snakeString,
 
-	UploadDir: "/path/to/uploads",
-
 	Username: "admin",
 	Password: "password"
 })
