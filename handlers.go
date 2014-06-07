@@ -207,7 +207,9 @@ func (a *Admin) handleSave(rw http.ResponseWriter, req *http.Request) (map[strin
 		rawValue := req.Form.Get(fieldName)
 
 		// If file field (and no rawValue), handle file
+		isFile := false
 		if fileField, ok := field.(FileHandlerField); ok {
+			isFile = true
 			files, ok := req.MultipartForm.File[fieldName]
 			if ok {
 				filename, err := fileField.HandleFile(files[0])
@@ -224,7 +226,8 @@ func (a *Admin) handleSave(rw http.ResponseWriter, req *http.Request) (map[strin
 			hasErrors = true
 		}
 
-		if rawValue == "" {
+		// Files have no regular form value set, so we don't want to set it's data to "" and have it removed
+		if rawValue == "" && isFile {
 			continue
 		}
 
@@ -235,11 +238,25 @@ func (a *Admin) handleSave(rw http.ResponseWriter, req *http.Request) (map[strin
 		return data, errors
 	}
 
-	// Create query
-	changedCols := make([]string, len(data))
-	changedData := make([]interface{}, len(data))
-	i := 0
+	// Get existing data, if any, so we can check what values were changed (existing == nil for new rows)
+	var existing map[string]interface{}
+	if id != 0 {
+		existing, err = a.querySingleModel(model, id)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	// Create query only with the changed data
+	changedCols := []string{}
+	changedData := []interface{}{}
 	for key, value := range data {
+		// Skip if not changed
+		if existing != nil && value == existing[key] {
+			continue
+		}
+
+		// Convert to DB version of name and append
 		col := key
 		if a.NameTransform != nil {
 			col = a.NameTransform(key)
@@ -247,14 +264,14 @@ func (a *Admin) handleSave(rw http.ResponseWriter, req *http.Request) (map[strin
 		if id != 0 {
 			col = fmt.Sprintf("%v = ?", col)
 		}
-		changedCols[i] = col
-		changedData[i] = value
-		i++
+		changedCols = append(changedCols, col)
+		changedData = append(changedData, value)
 	}
 
 	valMarks := strings.Repeat("?, ", len(data))
 	valMarks = valMarks[0 : len(valMarks)-2]
 
+	// Insert / update
 	var q string
 	if id != 0 {
 		q = fmt.Sprintf("UPDATE %v SET %v WHERE id = %v", model.tableName, strings.Join(changedCols, ", "), id)
@@ -262,17 +279,13 @@ func (a *Admin) handleSave(rw http.ResponseWriter, req *http.Request) (map[strin
 		q = fmt.Sprintf("INSERT INTO %v(%v) VALUES(%v)", model.tableName, strings.Join(changedCols, ", "), valMarks)
 	}
 
-	fmt.Println(q)
-
-	sess := a.getUserSession(req)
-
-	fmt.Println(changedData)
 	_, err = a.db.Exec(q, changedData...)
 	if err != nil {
 		fmt.Println(err)
 		return nil, nil
 	}
 
+	sess := a.getUserSession(req)
 	sess.addMessage("success", fmt.Sprintf("%v has been saved.", model.Name))
 
 	if req.Form.Get("done") == "true" {

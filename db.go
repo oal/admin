@@ -79,11 +79,8 @@ func (a *Admin) querySingleModel(mdl *model, id int) (map[string]interface{}, er
 		return nil, err
 	}
 
-	fmt.Println(result)
-
 	resultMap := map[string]interface{}{}
 	for i, val := range result {
-		fmt.Println(i, mdl.fieldNames[i], val)
 		resultMap[mdl.fieldNames[i]] = val
 	}
 

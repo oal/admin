@@ -54,9 +54,10 @@ Additional options can be provided in the `admin` struct tag, as in the example 
 -   `-` Skip / hide column (id / first column can't be hidden)
 -   `list` Show column in list view
 -   `search` Make column searchable
+-   `field=file` Lets you specify a non-default field type. `url` and `file` are currently supported
 -   `label='Custom name'` Custom label for column
 -   `default='My default value'` Default value in "new"/"create" form
--   `width=4` Custom field width / column width (Optional, if not specified, 12 / full width is default.)
+-   `width=4` Custom field width / column width (Optional, if not specified, 12 / full width is default)
 -   `format='01.02.2006'` For time.Time fields
 -   `textarea` Used by string / text field to display field as a <textarea> instead of an <input>
 
