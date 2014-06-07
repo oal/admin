@@ -80,6 +80,13 @@ func (a *Admin) handleList(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	columns := []string{}
+	for _, field := range model.fields {
+		if field.Attrs().list {
+			columns = append(columns, field.Attrs().name)
+		}
+	}
+
 	req.ParseForm()
 	q := req.Form.Get("q")
 
@@ -88,7 +95,6 @@ func (a *Admin) handleList(rw http.ResponseWriter, req *http.Request) {
 		fmt.Println(err)
 		return
 	}
-	fmt.Println(results)
 
 	strResults := [][]template.HTML{}
 	fields := model.listFields
@@ -110,9 +116,8 @@ func (a *Admin) handleList(rw http.ResponseWriter, req *http.Request) {
 	a.render(rw, req, tmpl, map[string]interface{}{
 		"name":    model.Name,
 		"slug":    slug,
-		"columns": model.listColumns,
+		"columns": columns,
 		"results": strResults,
-		"skipId":  model.listTableColumns[0] != "id",
 	})
 }
 
@@ -176,8 +181,6 @@ func (a *Admin) handleSave(rw http.ResponseWriter, req *http.Request) (map[strin
 	if err != nil {
 		return nil, nil
 	}
-	fmt.Println(req.MultipartForm.Value)
-	fmt.Println(req.MultipartForm.File)
 
 	vars := mux.Vars(req)
 	slug := vars["slug"]

@@ -154,12 +154,9 @@ func (g *modelGroup) RegisterModel(mdl interface{}) error {
 		Slug:      slug.SlugAscii(name),
 		tableName: tableName,
 		fields:    []Field{},
-		instance:  mdl,
 	}
 
 	am.fieldNames = []string{}
-	am.listColumns = []string{}
-	am.listTableColumns = []string{}
 	am.listFields = []Field{}
 	am.searchableColumns = []string{}
 
@@ -266,8 +263,6 @@ func (g *modelGroup) RegisterModel(mdl interface{}) error {
 
 		if _, ok := tagMap["list"]; ok || i == 0 { // ID (i == 0) is always shown
 			field.Attrs().list = true
-			am.listColumns = append(am.listColumns, fieldName)
-			am.listTableColumns = append(am.listTableColumns, tableField)
 			am.listFields = append(am.listFields, field)
 		}
 
@@ -304,11 +299,8 @@ type model struct {
 	Slug      string
 	fields    []Field
 	tableName string
-	instance  interface{}
 
 	fieldNames        []string
-	listColumns       []string
-	listTableColumns  []string
 	listFields        []Field
 	searchableColumns []string
 }

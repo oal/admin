@@ -29,7 +29,12 @@ func (a *Admin) queryModel(mdl *model, search string) ([][]interface{}, error) {
 
 	}
 
-	cols := mdl.listTableColumns
+	cols := []string{}
+	for _, field := range mdl.fields {
+		if field.Attrs().list {
+			cols = append(cols, field.Attrs().columnName)
+		}
+	}
 	q := fmt.Sprintf("SELECT %v FROM %v %v", strings.Join(cols, ","), mdl.tableName, qSearch)
 
 	var rows *sql.Rows
