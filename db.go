@@ -31,8 +31,8 @@ func (a *Admin) queryModel(mdl *model, search string) ([][]interface{}, error) {
 
 	cols := []string{}
 	for _, field := range mdl.fields {
-		if field.Attrs().list {
-			cols = append(cols, field.Attrs().columnName)
+		if field.Attrs().List {
+			cols = append(cols, field.Attrs().ColumnName)
 		}
 	}
 	q := fmt.Sprintf("SELECT %v FROM %v %v", strings.Join(cols, ","), mdl.tableName, qSearch)

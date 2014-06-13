@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/gorilla/mux"
+	"github.com/oal/admin/fields"
 	"html/template"
 	"net/http"
 	"strconv"
@@ -82,8 +83,8 @@ func (a *Admin) handleList(rw http.ResponseWriter, req *http.Request) {
 
 	columns := []string{}
 	for _, field := range model.fields {
-		if field.Attrs().list {
-			columns = append(columns, field.Attrs().name)
+		if field.Attrs().List {
+			columns = append(columns, field.Attrs().Name)
 		}
 	}
 
@@ -209,7 +210,7 @@ func (a *Admin) handleSave(rw http.ResponseWriter, req *http.Request) (map[strin
 
 		// If file field (and no rawValue), handle file
 		isFile := false
-		if fileField, ok := field.(FileHandlerField); ok {
+		if fileField, ok := field.(fields.FileHandlerField); ok {
 			isFile = true
 			files, ok := req.MultipartForm.File[fieldName]
 			if ok {

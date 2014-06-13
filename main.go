@@ -1,13 +1,13 @@
 package admin
 
 import (
-	"bytes"
 	"database/sql"
 	"errors"
 	"fmt"
 	"github.com/extemporalgenome/slug"
 	"github.com/gorilla/mux"
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/oal/admin/fields"
 	"html/template"
 	"io"
 	"net/http"
@@ -33,7 +33,7 @@ type Admin struct {
 	models        map[string]*model
 	modelGroups   []*modelGroup
 	registeredFKs map[reflect.Type]*model
-	missingFKs    map[*ForeignKeyField]reflect.Type
+	missingFKs    map[*fields.ForeignKeyField]reflect.Type
 }
 
 // Setup registers page handlers and enables the admin.
@@ -82,7 +82,7 @@ func Setup(admin *Admin) (*Admin, error) {
 	admin.models = map[string]*model{}
 	admin.modelGroups = []*modelGroup{}
 	admin.registeredFKs = map[reflect.Type]*model{}
-	admin.missingFKs = map[*ForeignKeyField]reflect.Type{}
+	admin.missingFKs = map[*fields.ForeignKeyField]reflect.Type{}
 
 	// Routes
 	sr := admin.Router.PathPrefix(admin.Path).Subrouter()
@@ -154,11 +154,11 @@ func (g *modelGroup) RegisterModel(mdl interface{}) error {
 		Name:      name,
 		Slug:      slug.SlugAscii(name),
 		tableName: tableName,
-		fields:    []Field{},
+		fields:    []fields.Field{},
 	}
 
 	am.fieldNames = []string{}
-	am.listFields = []Field{}
+	am.listFields = []fields.Field{}
 	am.searchableColumns = []string{}
 
 	// Set as registered so it can be used as a ForeignKey from other models
@@ -172,7 +172,7 @@ func (g *modelGroup) RegisterModel(mdl interface{}) error {
 			continue
 		}
 
-		field.model = &am
+		field.ModelSlug = am.Slug
 		delete(g.admin.missingFKs, field)
 	}
 
@@ -211,43 +211,43 @@ func (g *modelGroup) RegisterModel(mdl interface{}) error {
 
 		// Choose Field
 		// First, check if we want to override a field, otherwise use one of the defaults
-		var field Field
+		var field fields.Field
 		overrideField, ok := tagMap["field"]
-		if customField, ok2 := customFields[overrideField]; ok && ok2 {
+		if customField, ok2 := fields.CustomFields[overrideField]; ok && ok2 {
 			customType := reflect.ValueOf(customField).Elem().Type()
 			newField := reflect.New(customType)
 			baseField := newField.Elem().Field(0)
-			baseField.Set(reflect.ValueOf(&BaseField{}))
-			field = newField.Interface().(Field)
+			baseField.Set(reflect.ValueOf(&fields.BaseField{}))
+			field = newField.Interface().(fields.Field)
 		} else {
 			switch kind {
 			case reflect.String:
-				field = &TextField{BaseField: &BaseField{}}
+				field = &fields.TextField{BaseField: &fields.BaseField{}}
 			case reflect.Int, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Uint, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-				field = &IntField{BaseField: &BaseField{}}
+				field = &fields.IntField{BaseField: &fields.BaseField{}}
 			case reflect.Float32, reflect.Float64:
-				field = &FloatField{BaseField: &BaseField{}}
+				field = &fields.FloatField{BaseField: &fields.BaseField{}}
 			case reflect.Bool:
-				field = &BooleanField{BaseField: &BaseField{}}
+				field = &fields.BooleanField{BaseField: &fields.BaseField{}}
 			case reflect.Struct:
-				field = &TimeField{BaseField: &BaseField{}}
+				field = &fields.TimeField{BaseField: &fields.BaseField{}}
 			case reflect.Ptr:
-				field = &ForeignKeyField{BaseField: &BaseField{}}
+				field = &fields.ForeignKeyField{BaseField: &fields.BaseField{}}
 
 				// Special treatment for foreign keys
 				// We need the field to know what model it's related to
 				if regModel, ok := g.admin.registeredFKs[fieldType]; ok {
-					field.(*ForeignKeyField).model = regModel
+					field.(*fields.ForeignKeyField).ModelSlug = regModel.Slug
 				} else {
-					g.admin.missingFKs[field.(*ForeignKeyField)] = refl.Type
+					g.admin.missingFKs[field.(*fields.ForeignKeyField)] = refl.Type
 				}
 			default:
 				fmt.Println("Unknown field type")
-				field = &TextField{BaseField: &BaseField{}}
+				field = &fields.TextField{BaseField: &fields.BaseField{}}
 			}
 		}
 
-		field.Attrs().name = fieldName
+		field.Attrs().Name = fieldName
 
 		// Read relevant config options from the tagMap
 		err = field.Configure(tagMap)
@@ -255,25 +255,25 @@ func (g *modelGroup) RegisterModel(mdl interface{}) error {
 			panic(err)
 		}
 
-		field.Attrs().columnName = tableField
+		field.Attrs().ColumnName = tableField
 		if label, ok := tagMap["label"]; ok {
-			field.Attrs().label = label
+			field.Attrs().Label = label
 		} else {
-			field.Attrs().label = fieldName
+			field.Attrs().Label = fieldName
 		}
 
 		if _, ok := tagMap["list"]; ok || i == 0 { // ID (i == 0) is always shown
-			field.Attrs().list = true
+			field.Attrs().List = true
 			am.listFields = append(am.listFields, field)
 		}
 
 		if _, ok := tagMap["search"]; ok {
-			field.Attrs().searchable = true
+			field.Attrs().Searchable = true
 			am.searchableColumns = append(am.searchableColumns, tableField)
 		}
 
 		if val, ok := tagMap["default"]; ok {
-			field.Attrs().defaultValue = val
+			field.Attrs().DefaultValue = val
 		}
 
 		if width, ok := tagMap["width"]; ok {
@@ -281,7 +281,7 @@ func (g *modelGroup) RegisterModel(mdl interface{}) error {
 			if err != nil {
 				panic(err)
 			}
-			field.Attrs().width = i
+			field.Attrs().Width = i
 		}
 
 		am.fields = append(am.fields, field)
@@ -298,11 +298,11 @@ func (g *modelGroup) RegisterModel(mdl interface{}) error {
 type model struct {
 	Name      string
 	Slug      string
-	fields    []Field
+	fields    []fields.Field
 	tableName string
 
 	fieldNames        []string
-	listFields        []Field
+	listFields        []fields.Field
 	searchableColumns []string
 }
 
@@ -314,7 +314,7 @@ func (m *model) renderForm(w io.Writer, data map[string]interface{}, defaults bo
 		field := m.fieldByName(fieldName)
 		val, ok = data[fieldName]
 		if !ok && defaults {
-			val = field.Attrs().defaultValue
+			val = field.Attrs().DefaultValue
 		}
 
 		// Error text displayed below field, if any
@@ -324,13 +324,13 @@ func (m *model) renderForm(w io.Writer, data map[string]interface{}, defaults bo
 		}
 
 		field.Render(w, val, err, activeCol%12 == 0)
-		activeCol += field.Attrs().width
+		activeCol += field.Attrs().Width
 	}
 }
 
-func (m *model) fieldByName(name string) Field {
+func (m *model) fieldByName(name string) fields.Field {
 	for _, field := range m.fields {
-		if field.Attrs().name == name {
+		if field.Attrs().Name == name {
 			return field
 		}
 	}
@@ -348,37 +348,6 @@ func (a *Admin) modelURL(slug, action string) string {
 func loadTemplates(path string) (*template.Template, error) {
 	// Pages / views
 	tmpl, err := template.ParseGlob(fmt.Sprintf("%v/*.html", path))
-	if err != nil {
-		return nil, err
-	}
-
-	// Additional functions
-	tmpl.Funcs(template.FuncMap{
-		"runtemplate": func(name string, ctx interface{}) (template.HTML, error) {
-			var buf bytes.Buffer
-			err := templates.Lookup(name).Execute(&buf, ctx)
-			if err != nil {
-				return "", err
-			}
-			return template.HTML(buf.String()), nil
-		},
-	})
-
-	tmpl, err = tmpl.ParseGlob(fmt.Sprintf("%v/fields/*.html", path))
-	if err != nil {
-		return nil, err
-	}
-
-	tmpl, err = tmpl.New("FieldWrapper").Parse(`
-		{{if .startrow}}</div><div class="row">{{end}}
-		<div class="col-sm-{{.width}}">
-			<div class="form-group">
-				<label for="{{.name}}">{{.label}}</label>
-				{{runtemplate .tmpl .}}
-				{{if .error}}<p class="text-danger">{{.error}}</p>{{end}}
-			</div>
-		</div>
-	`)
 	if err != nil {
 		return nil, err
 	}
