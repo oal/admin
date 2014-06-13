@@ -1,6 +1,7 @@
 package fields
 
 import (
+	"fmt"
 	"html/template"
 	"io"
 	"strconv"
@@ -24,4 +25,14 @@ func (b *BooleanField) Validate(val string) (interface{}, error) {
 		return false, nil
 	}
 	return bl, nil
+}
+
+func (b *BooleanField) RenderString(val interface{}) template.HTML {
+	s := `<span class="glyphicon %v"></span>`
+	if i, ok := val.(int64); ok && i == 1 {
+		s = fmt.Sprintf(s, "text-success glyphicon-ok")
+	} else {
+		s = fmt.Sprintf(s, "text-danger glyphicon-close")
+	}
+	return template.HTML(template.HTML(s))
 }

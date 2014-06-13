@@ -2,6 +2,7 @@ package fields
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"html/template"
 	"io"
@@ -18,11 +19,6 @@ type Field interface {
 
 type FileHandlerField interface {
 	HandleFile(*multipart.FileHeader) (string, error)
-}
-
-var CustomFields = map[string]Field{
-	"url":  &URLField{&BaseField{}},
-	"file": &FileField{&BaseField{}, ""},
 }
 
 type BaseField struct {
@@ -73,6 +69,32 @@ func (b *BaseField) BaseRender(w io.Writer, tmpl *template.Template, value inter
 	if err != nil {
 		fmt.Println(err)
 	}
+}
+
+var customFields = map[string]Field{
+	"url":  &URLField{&BaseField{}},
+	"file": &FileField{&BaseField{}, ""},
+}
+
+func RegisterCustom(name string, field Field) error {
+	if _, ok := customFields[name]; ok {
+		return errors.New(fmt.Sprintf("A field with the name %v already exists.", name))
+	}
+
+	if field.Attrs() == nil {
+		return errors.New("Add a *BaseField and other initial values if needed before registering.")
+	}
+
+	customFields[name] = field
+	return nil
+}
+
+func GetCustom(name string) Field {
+	if field, ok := customFields[name]; ok {
+		return field
+	}
+
+	return nil
 }
 
 var fieldWrapper = template.Must(template.New("FieldWrapper").Parse(`

@@ -213,7 +213,7 @@ func (g *modelGroup) RegisterModel(mdl interface{}) error {
 		// First, check if we want to override a field, otherwise use one of the defaults
 		var field fields.Field
 		overrideField, ok := tagMap["field"]
-		if customField, ok2 := fields.CustomFields[overrideField]; ok && ok2 {
+		if customField := fields.GetCustom(overrideField); ok && customField != nil {
 			customType := reflect.ValueOf(customField).Elem().Type()
 			newField := reflect.New(customType)
 			baseField := newField.Elem().Field(0)

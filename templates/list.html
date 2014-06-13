@@ -14,31 +14,30 @@
 </div>
 <div class="row">
 	<div class="col-xs-12">
-	<div class="table-responsive">
-		<table class="table table-striped">
-		<thead>
-			<tr>
-				{{range $col := .columns}}
-					<th>{{$col}}</th>
-				{{end}}
-				<th style="width: 100px">&nbsp;</th>
-			</tr>
-		</thead>
-			<tbody>
-				{{range $result := .results}}
-					<tr>
-						{{range $i, $col := $result}}
-							<td>{{$col}}</td>
-						{{end}}
-						<td>
-							<a href="edit/{{index $result 0}}" class="btn btn-primary btn-block btn-sm">Edit</a>
-						</td>
-					</tr>
-				{{end}}
-			</tbody>
-		</table>
-	</div>
-
+		<div class="table-responsive">
+			<table class="table table-striped table-bordered">
+			<thead>
+				<tr>
+					{{range $col := .columns}}
+						<th>{{$col}}</th>
+					{{end}}
+					<th style="width: 100px">&nbsp;</th>
+				</tr>
+			</thead>
+				<tbody>
+					{{range $result := .results}}
+						<tr>
+							{{range $i, $col := $result}}
+								<td>{{$col}}</td>
+							{{end}}
+							<td>
+								<a href="edit/{{index $result 0}}" class="btn btn-primary btn-block btn-sm">Edit</a>
+							</td>
+						</tr>
+					{{end}}
+				</tbody>
+			</table>
+		</div>
 	</div>
 </div>
 {{template "footer.html" .}}

@@ -84,7 +84,7 @@ func (a *Admin) handleList(rw http.ResponseWriter, req *http.Request) {
 	columns := []string{}
 	for _, field := range model.fields {
 		if field.Attrs().List {
-			columns = append(columns, field.Attrs().Name)
+			columns = append(columns, field.Attrs().Label)
 		}
 	}
 
