@@ -32,7 +32,7 @@ func (b *BooleanField) RenderString(val interface{}) template.HTML {
 	if i, ok := val.(int64); ok && i == 1 {
 		s = fmt.Sprintf(s, "text-success glyphicon-ok")
 	} else {
-		s = fmt.Sprintf(s, "text-danger glyphicon-close")
+		s = fmt.Sprintf(s, "text-danger glyphicon-remove")
 	}
 	return template.HTML(template.HTML(s))
 }

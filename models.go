@@ -139,10 +139,14 @@ func makeField(kind reflect.Kind, override string) fields.Field {
 	// First, check if we want to override a field, otherwise use one of the defaults
 	var field fields.Field
 	if customField := fields.GetCustom(override); customField != nil {
+		// Create field
 		customType := reflect.ValueOf(customField).Elem().Type()
 		newField := reflect.New(customType)
+
+		// Create BaseField in Field
 		baseField := newField.Elem().Field(0)
 		baseField.Set(reflect.ValueOf(&fields.BaseField{}))
+
 		field = newField.Interface().(fields.Field)
 	} else {
 		switch kind {
@@ -178,6 +182,10 @@ func applyFieldTags(mdl *model, field fields.Field, tagMap map[string]string) {
 		field.Attrs().Label = label
 	} else {
 		field.Attrs().Label = field.Attrs().Name
+	}
+
+	if _, ok := tagMap["optional"]; ok {
+		field.Attrs().Optional = true
 	}
 
 	if _, ok := tagMap["list"]; ok {

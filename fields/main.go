@@ -7,6 +7,7 @@ import (
 	"html/template"
 	"io"
 	"mime/multipart"
+	"net/http"
 )
 
 type Field interface {
@@ -25,6 +26,7 @@ type BaseField struct {
 	Name         string
 	Label        string
 	DefaultValue interface{}
+	Optional     bool
 	ColumnName   string
 	List         bool
 	Searchable   bool
@@ -52,6 +54,7 @@ func (b *BaseField) BaseRender(w io.Writer, tmpl *template.Template, value inter
 		ctx = map[string]interface{}{}
 	}
 	ctx["label"] = b.Label
+	ctx["optional"] = b.Optional
 	ctx["name"] = b.Name
 	ctx["value"] = value
 	ctx["error"] = errStr
@@ -97,11 +100,32 @@ func GetCustom(name string) Field {
 	return nil
 }
 
+func Validate(field Field, req *http.Request, existing interface{}) (interface{}, error) {
+	fieldName := field.Attrs().Name
+	rawValue := req.Form.Get(fieldName)
+
+	// If file field (and no rawValue), handle file
+	if fileField, ok := field.(FileHandlerField); ok {
+		files, ok := req.MultipartForm.File[fieldName]
+		if ok {
+			filename, err := fileField.HandleFile(files[0])
+			if err != nil {
+				panic(err)
+			}
+			rawValue = filename
+		} else {
+			rawValue = existing.(string)
+		}
+	}
+
+	return field.Validate(rawValue)
+}
+
 var fieldWrapper = template.Must(template.New("FieldWrapper").Parse(`
 	{{if .startrow}}</div><div class="row">{{end}}
 	<div class="col-sm-{{.width}}">
 		<div class="form-group">
-			<label for="{{.name}}">{{.label}}</label>
+			<label for="{{.name}}">{{.label}}{{if not .optional}} *{{end}}</label>
 			{{.field}}
 			{{if .error}}<p class="text-danger">{{.error}}</p>{{end}}
 		</div>

@@ -199,47 +199,6 @@ func (a *Admin) handleSave(rw http.ResponseWriter, req *http.Request) (map[strin
 
 	numFields := len(model.fieldNames) - 1 // No need for ID.
 
-	// Get data from POST and fill a slice
-	data := map[string]interface{}{}
-	errors := map[string]string{}
-	hasErrors := false
-	for i := 0; i < numFields; i++ {
-		fieldName := model.fieldNames[i+1]
-		field := model.fieldByName(fieldName)
-		rawValue := req.Form.Get(fieldName)
-
-		// If file field (and no rawValue), handle file
-		isFile := false
-		if fileField, ok := field.(fields.FileHandlerField); ok {
-			isFile = true
-			files, ok := req.MultipartForm.File[fieldName]
-			if ok {
-				filename, err := fileField.HandleFile(files[0])
-				if err != nil {
-					panic(err)
-				}
-				rawValue = filename
-			}
-		}
-
-		val, err := field.Validate(rawValue)
-		if err != nil {
-			errors[fieldName] = err.Error()
-			hasErrors = true
-		}
-
-		// Files have no regular form value set, so we don't want to set it's data to "" and have it removed
-		if rawValue == "" && isFile {
-			continue
-		}
-
-		data[fieldName] = val
-	}
-
-	if hasErrors {
-		return data, errors
-	}
-
 	// Get existing data, if any, so we can check what values were changed (existing == nil for new rows)
 	var existing map[string]interface{}
 	if id != 0 {
@@ -247,6 +206,32 @@ func (a *Admin) handleSave(rw http.ResponseWriter, req *http.Request) (map[strin
 		if err != nil {
 			panic(err)
 		}
+	}
+
+	// Get data from POST and fill a slice
+	data := map[string]interface{}{}
+	errors := map[string]string{}
+	hasErrors := false
+	for i := 0; i < numFields; i++ {
+		fieldName := model.fieldNames[i+1]
+		field := model.fieldByName(fieldName)
+
+		var existingVal interface{}
+		if existing != nil {
+			existingVal = existing[fieldName]
+		}
+
+		val, err := fields.Validate(field, req, existingVal)
+		if err != nil {
+			errors[fieldName] = err.Error()
+			hasErrors = true
+		}
+
+		data[fieldName] = val
+	}
+
+	if hasErrors {
+		return data, errors
 	}
 
 	// Create query only with the changed data

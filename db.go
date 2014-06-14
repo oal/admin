@@ -11,8 +11,8 @@ import (
 // queryModel is used in list view to display all rows.
 func (a *Admin) queryModel(mdl *model, search string) ([][]interface{}, error) {
 	// Ugly search. Will fix later.
-	qSearch := ""
 	doSearch := false
+	whereStr := ""
 	var searchList []interface{}
 	if len(search) > 0 {
 		if len(mdl.searchableColumns) > 0 {
@@ -22,9 +22,9 @@ func (a *Admin) queryModel(mdl *model, search string) ([][]interface{}, error) {
 				searchList[i] = search
 			}
 			for i, _ := range searchCols {
-				searchCols[i] = fmt.Sprintf("%v LIKE ?", mdl.searchableColumns[i])
+				searchCols[i] = fmt.Sprintf("%v.%v LIKE ?", mdl.tableName, mdl.searchableColumns[i])
 			}
-			qSearch = fmt.Sprintf("WHERE %v", strings.Join(searchCols, " OR "))
+			whereStr = fmt.Sprintf("WHERE (%v)", strings.Join(searchCols, " OR "))
 			doSearch = true
 		}
 
@@ -32,26 +32,30 @@ func (a *Admin) queryModel(mdl *model, search string) ([][]interface{}, error) {
 
 	cols := []string{}
 	tables := []string{mdl.tableName}
-	where := []string{}
+	fkWhere := []string{}
 	for _, field := range mdl.fields {
 		if field.Attrs().List {
 			colName := fmt.Sprintf("%v.%v", mdl.tableName, field.Attrs().ColumnName)
 			if fk, ok := field.(*fields.ForeignKeyField); ok && len(fk.ListColumn) > 0 {
 				fkColName := fmt.Sprintf("%v.%v", fk.TableName, fk.ListColumn)
-				where = append(where, fmt.Sprintf("%v = %v.id", colName, fk.TableName))
+				fkWhere = append(fkWhere, fmt.Sprintf("%v = %v.id", colName, fk.TableName))
 				colName = fkColName
 				tables = append(tables, fk.TableName)
 			}
 			cols = append(cols, colName)
 		}
 	}
-	whereStr := ""
-	if len(where) > 0 {
-		whereStr = fmt.Sprintf("WHERE %v", strings.Join(where, " AND "))
+
+	if len(fkWhere) > 0 {
+		if len(whereStr) > 0 {
+			whereStr += fmt.Sprintf(" AND (%v)", strings.Join(fkWhere, " AND "))
+		} else {
+			whereStr = "WHERE " + strings.Join(fkWhere, " AND ")
+		}
 	}
 
-	q := fmt.Sprintf("SELECT %v FROM %v %v %v", strings.Join(cols, ", "), strings.Join(tables, ", "), whereStr, qSearch)
-
+	q := fmt.Sprintf("SELECT %v FROM %v %v", strings.Join(cols, ", "), strings.Join(tables, ", "), whereStr)
+	fmt.Println(q)
 	var rows *sql.Rows
 	var err error
 	if doSearch {

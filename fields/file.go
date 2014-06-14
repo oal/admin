@@ -30,7 +30,6 @@ func (f *FileField) Render(w io.Writer, val interface{}, err string, startRow bo
 }
 
 func (f *FileField) Validate(val string) (interface{}, error) {
-	fmt.Println(val)
 	return val, nil
 }
 
