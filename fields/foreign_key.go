@@ -16,7 +16,9 @@ var foreignKeyTemplate = template.Must(template.New("template").Parse(`
 
 type ForeignKeyField struct {
 	*BaseField
-	ModelSlug string
+	TableName  string
+	ListColumn string
+	ModelSlug  string
 }
 
 func (f *ForeignKeyField) Render(w io.Writer, val interface{}, err string, startRow bool) {

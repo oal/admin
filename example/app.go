@@ -18,7 +18,7 @@ type Category struct {
 
 type BlogPost struct {
 	Id        int       `orm:"auto" admin:"list"`
-	Category  *Category `orm:"rel(fk)" admin:"list label='Category' width=3"`
+	Category  *Category `orm:"rel(fk)" admin:"list='Title' label='Category' width=3"` // list='Title' is used to show Category.Title instead of Category.Id in list view.
 	Title     string    `admin:"list search width=9"`
 	Body      string    `orm:"type(text)" admin:"textarea"`
 	Published time.Time `admin:"list width=11"`

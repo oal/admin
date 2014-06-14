@@ -16,12 +16,14 @@ import (
 	"strings"
 )
 
+type NameTransformFunc func(string) string
+
 type Admin struct {
 	Router        *mux.Router
 	Path          string
 	Database      string
 	Title         string
-	NameTransform func(string) string
+	NameTransform NameTransformFunc
 
 	Username string
 	Password string
@@ -139,12 +141,7 @@ func (g *modelGroup) RegisterModel(mdl interface{}) error {
 	parts := strings.Split(modelType.String(), ".")
 	name := parts[len(parts)-1]
 
-	var tableName string
-	if g.admin.NameTransform != nil {
-		tableName = g.admin.NameTransform(name)
-	} else {
-		tableName = name
-	}
+	tableName := typeToTableName(modelType, g.admin.NameTransform)
 
 	if named, ok := mdl.(namedModel); ok {
 		name = named.AdminName()
@@ -232,15 +229,25 @@ func (g *modelGroup) RegisterModel(mdl interface{}) error {
 			case reflect.Struct:
 				field = &fields.TimeField{BaseField: &fields.BaseField{}}
 			case reflect.Ptr:
-				field = &fields.ForeignKeyField{BaseField: &fields.BaseField{}}
+				fkField := &fields.ForeignKeyField{BaseField: &fields.BaseField{}}
+
+				// If column is shown in list view, and a field in related model is set to be listed
+				if listField, ok := tagMap["list"]; ok && len(listField) != 0 {
+					fkField.TableName = typeToTableName(refl.Type, g.admin.NameTransform)
+					if g.admin.NameTransform != nil {
+						listField = g.admin.NameTransform(listField)
+					}
+					fkField.ListColumn = listField
+				}
 
 				// Special treatment for foreign keys
 				// We need the field to know what model it's related to
 				if regModel, ok := g.admin.registeredFKs[fieldType]; ok {
-					field.(*fields.ForeignKeyField).ModelSlug = regModel.Slug
+					fkField.ModelSlug = regModel.Slug
 				} else {
 					g.admin.missingFKs[field.(*fields.ForeignKeyField)] = refl.Type
 				}
+				field = fkField
 			default:
 				fmt.Println("Unknown field type")
 				field = &fields.TextField{BaseField: &fields.BaseField{}}

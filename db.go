@@ -3,6 +3,7 @@ package admin
 import (
 	"database/sql"
 	"fmt"
+	"github.com/oal/admin/fields"
 	"reflect"
 	"strings"
 )
@@ -30,12 +31,26 @@ func (a *Admin) queryModel(mdl *model, search string) ([][]interface{}, error) {
 	}
 
 	cols := []string{}
+	tables := []string{mdl.tableName}
+	where := []string{}
 	for _, field := range mdl.fields {
 		if field.Attrs().List {
-			cols = append(cols, field.Attrs().ColumnName)
+			colName := fmt.Sprintf("%v.%v", mdl.tableName, field.Attrs().ColumnName)
+			if fk, ok := field.(*fields.ForeignKeyField); ok && len(fk.ListColumn) > 0 {
+				fkColName := fmt.Sprintf("%v.%v", fk.TableName, fk.ListColumn)
+				where = append(where, fmt.Sprintf("%v = %v.id", colName, fk.TableName))
+				colName = fkColName
+				tables = append(tables, fk.TableName)
+			}
+			cols = append(cols, colName)
 		}
 	}
-	q := fmt.Sprintf("SELECT %v FROM %v %v", strings.Join(cols, ","), mdl.tableName, qSearch)
+	whereStr := ""
+	if len(where) > 0 {
+		whereStr = fmt.Sprintf("WHERE %v", strings.Join(where, " AND "))
+	}
+
+	q := fmt.Sprintf("SELECT %v FROM %v %v %v", strings.Join(cols, ", "), strings.Join(tables, ", "), whereStr, qSearch)
 
 	var rows *sql.Rows
 	var err error

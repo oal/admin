@@ -53,6 +53,7 @@ Additional options can be provided in the `admin` struct tag, as in the example 
 
 -   `-` Skip / hide column (id / first column can't be hidden)
 -   `list` Show column in list view
+    -   `list='FieldName'` is available for pointers / `ForeignKeyField`s and will display RelatedField.FieldName instead of its Id value.
 -   `search` Make column searchable
 -   `field=file` Lets you specify a non-default field type. `url` and `file` are currently supported
     -   `file` also takes an optional `upload_to='some/path'`

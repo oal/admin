@@ -2,6 +2,7 @@ package admin
 
 import (
 	"crypto/rand"
+	"reflect"
 	"strconv"
 	"strings"
 )
@@ -80,4 +81,18 @@ func randString(n int) string {
 		bytes[i] = alphanum[b%byte(len(alphanum))]
 	}
 	return string(bytes)
+}
+
+func typeToTableName(t reflect.Type, nameTransform NameTransformFunc) string {
+	parts := strings.Split(t.String(), ".")
+	name := parts[len(parts)-1]
+
+	var tableName string
+	if nameTransform != nil {
+		tableName = nameTransform(name)
+	} else {
+		tableName = name
+	}
+
+	return tableName
 }
