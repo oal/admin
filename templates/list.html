@@ -40,4 +40,16 @@
 		</div>
 	</div>
 </div>
+<div class="row">
+	<div class="col-sm-9">
+		{{if gt .numPages 1}}
+		<ul class="pagination pages-list">
+			{{range .pages}}
+				<li{{if eq $.page .}} class="active"{{end}}><a href="?page={{.}}{{if $.q}}&q={{$.q}}{{end}}">{{.}}</a></li>
+			{{end}}
+		</ul>
+		{{end}}
+	</div>
+	<div class="col-sm-3 text-right">{{.rows}} objects found.</div>
+</div>
 {{template "footer.html" .}}

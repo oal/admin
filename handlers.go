@@ -91,7 +91,12 @@ func (a *Admin) handleList(rw http.ResponseWriter, req *http.Request) {
 	req.ParseForm()
 	q := req.Form.Get("q")
 
-	results, err := a.queryModel(model, q)
+	page, err := strconv.ParseInt(req.Form.Get("page"), 10, 64)
+	if err != nil {
+		page = 1
+	}
+
+	results, rows, err := a.queryModel(model, q, int(page))
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -114,11 +119,21 @@ func (a *Admin) handleList(rw http.ResponseWriter, req *http.Request) {
 		tmpl = "list.html"
 	}
 
+	pages := make([]int, rows/2)
+	for i, _ := range pages {
+		pages[i] = i + 1
+	}
+
 	a.render(rw, req, tmpl, map[string]interface{}{
 		"name":    model.Name,
 		"slug":    slug,
 		"columns": columns,
 		"results": strResults,
+
+		"page":     page,
+		"numPages": len(pages),
+		"pages":    pages,
+		"rows":     rows,
 	})
 }
 

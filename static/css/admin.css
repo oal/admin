@@ -11,6 +11,10 @@ body {
 	min-height: 170px;
 }
 
+.pages-list {
+	margin-top: 0;
+}
+
 .footer {
 	font-size: 80%;
 	color: #bbb;

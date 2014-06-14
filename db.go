@@ -9,7 +9,9 @@ import (
 )
 
 // queryModel is used in list view to display all rows.
-func (a *Admin) queryModel(mdl *model, search string) ([][]interface{}, error) {
+func (a *Admin) queryModel(mdl *model, search string, page int) ([][]interface{}, int, error) {
+	page--
+
 	// Ugly search. Will fix later.
 	doSearch := false
 	whereStr := ""
@@ -54,18 +56,34 @@ func (a *Admin) queryModel(mdl *model, search string) ([][]interface{}, error) {
 		}
 	}
 
-	q := fmt.Sprintf("SELECT %v FROM %v %v", strings.Join(cols, ", "), strings.Join(tables, ", "), whereStr)
-	fmt.Println(q)
+	sqlColumns := strings.Join(cols, ", ")
+	sqlTables := strings.Join(tables, ", ")
+
+	fromWhere := fmt.Sprintf("FROM %v %v", sqlTables, whereStr)
+	rowQuery := fmt.Sprintf("SELECT %v %v LIMIT %v,%v", sqlColumns, fromWhere, page*2, 2)
+	countQuery := fmt.Sprintf("SELECT COUNT(*) %v", fromWhere)
+	fmt.Println(rowQuery)
+
 	var rows *sql.Rows
+	var countRow *sql.Row
 	var err error
 	if doSearch {
-		rows, err = a.db.Query(q, searchList...)
+		rows, err = a.db.Query(rowQuery, searchList...)
+		countRow = a.db.QueryRow(countQuery, searchList...)
 	} else {
-		rows, err = a.db.Query(q)
+		rows, err = a.db.Query(rowQuery)
+		countRow = a.db.QueryRow(countQuery)
 	}
 
+	numRows := 0
+	err = countRow.Scan(&numRows)
 	if err != nil {
-		return nil, err
+		fmt.Println(err)
+	}
+	fmt.Println(numRows)
+
+	if err != nil {
+		return nil, numRows, err
 	}
 
 	numCols := len(cols)
@@ -74,12 +92,12 @@ func (a *Admin) queryModel(mdl *model, search string) ([][]interface{}, error) {
 	for rows.Next() {
 		result, err := scanRow(numCols, rows)
 		if err != nil {
-			return nil, err
+			return nil, numRows, err
 		}
 		results = append(results, result)
 	}
 
-	return results, nil
+	return results, numRows, nil
 }
 
 // querySingleModel is used in edit view.
