@@ -60,7 +60,7 @@ func (a *Admin) queryModel(mdl *model, search string, page int) ([][]interface{}
 	sqlTables := strings.Join(tables, ", ")
 
 	fromWhere := fmt.Sprintf("FROM %v %v", sqlTables, whereStr)
-	rowQuery := fmt.Sprintf("SELECT %v %v LIMIT %v,%v", sqlColumns, fromWhere, page*2, 2)
+	rowQuery := fmt.Sprintf("SELECT %v %v LIMIT %v,%v", sqlColumns, fromWhere, page*25, 25)
 	countQuery := fmt.Sprintf("SELECT COUNT(*) %v", fromWhere)
 	fmt.Println(rowQuery)
 

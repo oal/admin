@@ -91,7 +91,7 @@ func (a *Admin) handleList(rw http.ResponseWriter, req *http.Request) {
 	req.ParseForm()
 	q := req.Form.Get("q")
 
-	page, err := strconv.ParseInt(req.Form.Get("page"), 10, 64)
+	page, err := strconv.ParseUint(req.Form.Get("page"), 10, 64)
 	if err != nil {
 		page = 1
 	}
@@ -99,6 +99,14 @@ func (a *Admin) handleList(rw http.ResponseWriter, req *http.Request) {
 	results, rows, err := a.queryModel(model, q, int(page))
 	if err != nil {
 		fmt.Println(err)
+		return
+	}
+
+	// Invalid page
+	if len(results) == 0 && page != 1 {
+		sess := a.getUserSession(req)
+		sess.addMessage("warning", "Empty page.")
+		http.Redirect(rw, req, req.URL.Path, 302)
 		return
 	}
 
@@ -119,7 +127,7 @@ func (a *Admin) handleList(rw http.ResponseWriter, req *http.Request) {
 		tmpl = "list.html"
 	}
 
-	pages := make([]int, rows/2)
+	pages := make([]int, int(float64(rows)/25.0+0.5))
 	for i, _ := range pages {
 		pages[i] = i + 1
 	}
