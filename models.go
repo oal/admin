@@ -184,8 +184,12 @@ func applyFieldTags(mdl *model, field fields.Field, tagMap map[string]string) {
 		field.Attrs().Label = field.Attrs().Name
 	}
 
-	if _, ok := tagMap["optional"]; ok {
-		field.Attrs().Optional = true
+	if _, ok := tagMap["blank"]; ok {
+		field.Attrs().Blank = true
+	}
+
+	if _, ok := tagMap["null"]; ok {
+		field.Attrs().Null = true
 	}
 
 	if _, ok := tagMap["list"]; ok {

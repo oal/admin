@@ -15,6 +15,11 @@ type BooleanField struct {
 	*BaseField
 }
 
+func (b *BooleanField) Configure(tagMap map[string]string) error {
+	b.Blank = true
+	return nil
+}
+
 func (b *BooleanField) Render(w io.Writer, val interface{}, err string, startRow bool) {
 	b.BaseRender(w, booleanTemplate, val, err, startRow, nil)
 }

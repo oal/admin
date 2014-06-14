@@ -262,7 +262,7 @@ func (a *Admin) handleSave(rw http.ResponseWriter, req *http.Request) (map[strin
 		return nil, nil
 	}
 
-	valMarks := strings.Repeat("?, ", len(data))
+	valMarks := strings.Repeat("?, ", len(changedCols))
 	valMarks = valMarks[0 : len(valMarks)-2]
 
 	// Insert / update
@@ -272,6 +272,8 @@ func (a *Admin) handleSave(rw http.ResponseWriter, req *http.Request) (map[strin
 	} else {
 		q = fmt.Sprintf("INSERT INTO %v(%v) VALUES(%v)", model.tableName, strings.Join(changedCols, ", "), valMarks)
 	}
+
+	fmt.Println(q)
 
 	_, err = a.db.Exec(q, changedData...)
 	if err != nil {

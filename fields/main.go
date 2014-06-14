@@ -26,7 +26,8 @@ type BaseField struct {
 	Name         string
 	Label        string
 	DefaultValue interface{}
-	Optional     bool
+	Blank        bool
+	Null         bool
 	ColumnName   string
 	List         bool
 	Searchable   bool
@@ -54,7 +55,7 @@ func (b *BaseField) BaseRender(w io.Writer, tmpl *template.Template, value inter
 		ctx = map[string]interface{}{}
 	}
 	ctx["label"] = b.Label
-	ctx["optional"] = b.Optional
+	ctx["blank"] = b.Blank
 	ctx["name"] = b.Name
 	ctx["value"] = value
 	ctx["error"] = errStr
@@ -113,8 +114,19 @@ func Validate(field Field, req *http.Request, existing interface{}) (interface{}
 				panic(err)
 			}
 			rawValue = filename
+		} else if oldValue, ok := existing.(string); ok {
+			rawValue = oldValue
+		}
+	}
+
+	if len(rawValue) == 0 {
+		if field.Attrs().Blank {
+			if field.Attrs().Null {
+				return nil, nil
+			}
+			return rawValue, nil
 		} else {
-			rawValue = existing.(string)
+			return nil, errors.New("This field can't be empty.")
 		}
 	}
 
@@ -125,7 +137,7 @@ var fieldWrapper = template.Must(template.New("FieldWrapper").Parse(`
 	{{if .startrow}}</div><div class="row">{{end}}
 	<div class="col-sm-{{.width}}">
 		<div class="form-group">
-			<label for="{{.name}}">{{.label}}{{if not .optional}} *{{end}}</label>
+			<label for="{{.name}}">{{.label}}{{if not .blank}} *{{end}}</label>
 			{{.field}}
 			{{if .error}}<p class="text-danger">{{.error}}</p>{{end}}
 		</div>
