@@ -83,16 +83,17 @@ func randString(n int) string {
 	return string(bytes)
 }
 
-func typeToTableName(t reflect.Type, nameTransform NameTransformFunc) string {
+func typeToName(t reflect.Type) string {
 	parts := strings.Split(t.String(), ".")
-	name := parts[len(parts)-1]
+	return parts[len(parts)-1]
+}
 
-	var tableName string
+func typeToTableName(t reflect.Type, nameTransform NameTransformFunc) string {
+	name := typeToName(t)
+
 	if nameTransform != nil {
-		tableName = nameTransform(name)
+		return nameTransform(name)
 	} else {
-		tableName = name
+		return name
 	}
-
-	return tableName
 }

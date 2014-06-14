@@ -13,7 +13,6 @@ import (
 	"net/http"
 	"os"
 	"reflect"
-	"strings"
 )
 
 type NameTransformFunc func(string) string
@@ -138,9 +137,7 @@ func (g *modelGroup) RegisterModel(mdl interface{}) error {
 	val := reflect.ValueOf(mdl)
 	ind := reflect.Indirect(val)
 
-	parts := strings.Split(modelType.String(), ".")
-	name := parts[len(parts)-1]
-
+	name := typeToName(modelType)
 	tableName := typeToTableName(modelType, g.admin.NameTransform)
 
 	if named, ok := mdl.(namedModel); ok {
@@ -192,7 +189,35 @@ func (g *modelGroup) RegisterModel(mdl interface{}) error {
 			panic(err)
 		}
 
-		// Expect pointers to be foreignkeys and foreignkeys to have the form Field[Id]
+		// ID (i == 0) is always shown
+		if i == 0 {
+			tagMap["list"] = ""
+		}
+
+		overrideField, _ := tagMap["field"]
+		field := getField(refl, overrideField)
+
+		// Foreign keys need some additional data added to them
+		if fkField, ok := field.(*fields.ForeignKeyField); ok {
+			// If column is shown in list view, and a field in related model is set to be listed
+			if listField, ok := tagMap["list"]; ok && len(listField) != 0 {
+				fkField.TableName = typeToTableName(refl.Type, g.admin.NameTransform)
+				if g.admin.NameTransform != nil {
+					listField = g.admin.NameTransform(listField)
+				}
+				fkField.ListColumn = listField
+			}
+
+			// We also need the field to know what model it's related to
+			if regModel, ok := g.admin.registeredFKs[fieldType]; ok {
+				fkField.ModelSlug = regModel.Slug
+			} else {
+				g.admin.missingFKs[field.(*fields.ForeignKeyField)] = refl.Type
+			}
+			field = fkField
+		}
+
+		// Expect pointers to be foreign keys and foreign keys to have the form Field[Id]
 		fieldName := refl.Name
 		if kind == reflect.Ptr {
 			fieldName += "Id"
@@ -206,90 +231,9 @@ func (g *modelGroup) RegisterModel(mdl interface{}) error {
 			tableField = refl.Name
 		}
 
-		// Choose Field
-		// First, check if we want to override a field, otherwise use one of the defaults
-		var field fields.Field
-		overrideField, ok := tagMap["field"]
-		if customField := fields.GetCustom(overrideField); ok && customField != nil {
-			customType := reflect.ValueOf(customField).Elem().Type()
-			newField := reflect.New(customType)
-			baseField := newField.Elem().Field(0)
-			baseField.Set(reflect.ValueOf(&fields.BaseField{}))
-			field = newField.Interface().(fields.Field)
-		} else {
-			switch kind {
-			case reflect.String:
-				field = &fields.TextField{BaseField: &fields.BaseField{}}
-			case reflect.Int, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Uint, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-				field = &fields.IntField{BaseField: &fields.BaseField{}}
-			case reflect.Float32, reflect.Float64:
-				field = &fields.FloatField{BaseField: &fields.BaseField{}}
-			case reflect.Bool:
-				field = &fields.BooleanField{BaseField: &fields.BaseField{}}
-			case reflect.Struct:
-				field = &fields.TimeField{BaseField: &fields.BaseField{}}
-			case reflect.Ptr:
-				fkField := &fields.ForeignKeyField{BaseField: &fields.BaseField{}}
-
-				// If column is shown in list view, and a field in related model is set to be listed
-				if listField, ok := tagMap["list"]; ok && len(listField) != 0 {
-					fkField.TableName = typeToTableName(refl.Type, g.admin.NameTransform)
-					if g.admin.NameTransform != nil {
-						listField = g.admin.NameTransform(listField)
-					}
-					fkField.ListColumn = listField
-				}
-
-				// Special treatment for foreign keys
-				// We need the field to know what model it's related to
-				if regModel, ok := g.admin.registeredFKs[fieldType]; ok {
-					fkField.ModelSlug = regModel.Slug
-				} else {
-					g.admin.missingFKs[field.(*fields.ForeignKeyField)] = refl.Type
-				}
-				field = fkField
-			default:
-				fmt.Println("Unknown field type")
-				field = &fields.TextField{BaseField: &fields.BaseField{}}
-			}
-		}
-
 		field.Attrs().Name = fieldName
-
-		// Read relevant config options from the tagMap
-		err = field.Configure(tagMap)
-		if err != nil {
-			panic(err)
-		}
-
 		field.Attrs().ColumnName = tableField
-		if label, ok := tagMap["label"]; ok {
-			field.Attrs().Label = label
-		} else {
-			field.Attrs().Label = fieldName
-		}
-
-		if _, ok := tagMap["list"]; ok || i == 0 { // ID (i == 0) is always shown
-			field.Attrs().List = true
-			am.listFields = append(am.listFields, field)
-		}
-
-		if _, ok := tagMap["search"]; ok {
-			field.Attrs().Searchable = true
-			am.searchableColumns = append(am.searchableColumns, tableField)
-		}
-
-		if val, ok := tagMap["default"]; ok {
-			field.Attrs().DefaultValue = val
-		}
-
-		if width, ok := tagMap["width"]; ok {
-			i, err := parseInt(width)
-			if err != nil {
-				panic(err)
-			}
-			field.Attrs().Width = i
-		}
+		applyFieldTags(&am, field, tagMap)
 
 		am.fields = append(am.fields, field)
 		am.fieldNames = append(am.fieldNames, fieldName)
@@ -300,6 +244,77 @@ func (g *modelGroup) RegisterModel(mdl interface{}) error {
 
 	fmt.Println("Registered", am.Name)
 	return nil
+}
+
+func getField(refl reflect.StructField, override string) fields.Field {
+	kind := refl.Type.Kind()
+
+	// Choose Field
+	// First, check if we want to override a field, otherwise use one of the defaults
+	var field fields.Field
+	if customField := fields.GetCustom(override); customField != nil {
+		customType := reflect.ValueOf(customField).Elem().Type()
+		newField := reflect.New(customType)
+		baseField := newField.Elem().Field(0)
+		baseField.Set(reflect.ValueOf(&fields.BaseField{}))
+		field = newField.Interface().(fields.Field)
+	} else {
+		switch kind {
+		case reflect.String:
+			field = &fields.TextField{BaseField: &fields.BaseField{}}
+		case reflect.Int, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Uint, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+			field = &fields.IntField{BaseField: &fields.BaseField{}}
+		case reflect.Float32, reflect.Float64:
+			field = &fields.FloatField{BaseField: &fields.BaseField{}}
+		case reflect.Bool:
+			field = &fields.BooleanField{BaseField: &fields.BaseField{}}
+		case reflect.Struct:
+			field = &fields.TimeField{BaseField: &fields.BaseField{}}
+		case reflect.Ptr:
+			field = &fields.ForeignKeyField{BaseField: &fields.BaseField{}}
+		default:
+			fmt.Println("Unknown field type")
+			field = &fields.TextField{BaseField: &fields.BaseField{}}
+		}
+	}
+
+	return field
+}
+
+func applyFieldTags(mdl *model, field fields.Field, tagMap map[string]string) {
+	// Read relevant config options from the tagMap
+	err := field.Configure(tagMap)
+	if err != nil {
+		panic(err)
+	}
+
+	if label, ok := tagMap["label"]; ok {
+		field.Attrs().Label = label
+	} else {
+		field.Attrs().Label = field.Attrs().Name
+	}
+
+	if _, ok := tagMap["list"]; ok {
+		field.Attrs().List = true
+		mdl.listFields = append(mdl.listFields, field)
+	}
+
+	if _, ok := tagMap["search"]; ok {
+		field.Attrs().Searchable = true
+		mdl.searchableColumns = append(mdl.searchableColumns, field.Attrs().ColumnName)
+	}
+
+	if val, ok := tagMap["default"]; ok {
+		field.Attrs().DefaultValue = val
+	}
+
+	if width, ok := tagMap["width"]; ok {
+		i, err := parseInt(width)
+		if err != nil {
+			panic(err)
+		}
+		field.Attrs().Width = i
+	}
 }
 
 type model struct {
