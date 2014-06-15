@@ -9,7 +9,7 @@ import (
 )
 
 // queryModel is used in list view to display all rows.
-func (a *Admin) queryModel(mdl *model, search string, page int) ([][]interface{}, int, error) {
+func (a *Admin) queryModel(mdl *model, search, sortBy string, sortDesc bool, page int) ([][]interface{}, int, error) {
 	page--
 
 	// Ugly search. Will fix later.
@@ -59,8 +59,22 @@ func (a *Admin) queryModel(mdl *model, search string, page int) ([][]interface{}
 	sqlColumns := strings.Join(cols, ", ")
 	sqlTables := strings.Join(tables, ", ")
 
+	if len(sortBy) > 0 {
+		sortCol := sortBy
+		if a.NameTransform != nil {
+			sortCol = a.NameTransform(sortBy)
+		}
+
+		direction := "ASC"
+		if sortDesc {
+			direction = "DESC"
+		}
+
+		sortBy = fmt.Sprintf(" ORDER BY %v.%v %v", mdl.tableName, sortCol, direction)
+	}
+
 	fromWhere := fmt.Sprintf("FROM %v %v", sqlTables, whereStr)
-	rowQuery := fmt.Sprintf("SELECT %v %v LIMIT %v,%v", sqlColumns, fromWhere, page*25, 25)
+	rowQuery := fmt.Sprintf("SELECT %v %v%v LIMIT %v,%v", sqlColumns, fromWhere, sortBy, page*25, 25)
 	countQuery := fmt.Sprintf("SELECT COUNT(*) %v", fromWhere)
 	fmt.Println(rowQuery)
 

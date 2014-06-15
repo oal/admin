@@ -82,21 +82,34 @@ func (a *Admin) handleList(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	columns := []string{}
+	colNames := []string{}
 	for _, field := range model.fields {
 		if field.Attrs().List {
 			columns = append(columns, field.Attrs().Label)
+			colNames = append(colNames, field.Attrs().Name)
 		}
 	}
 
 	req.ParseForm()
 	q := req.Form.Get("q")
 
+	// TODO: Only allow valid field names.
+	sortBy := req.Form.Get("sort")
+	if len(sortBy) == 0 {
+		sortBy = "Id"
+	}
+	sortDesc := false
+	if sortBy[0] == '-' {
+		sortBy = sortBy[1:]
+		sortDesc = true
+	}
+
 	page, err := strconv.ParseUint(req.Form.Get("page"), 10, 64)
 	if err != nil {
 		page = 1
 	}
 
-	results, rows, err := a.queryModel(model, q, int(page))
+	results, rows, err := a.queryModel(model, q, sortBy, sortDesc, int(page))
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -133,9 +146,14 @@ func (a *Admin) handleList(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	a.render(rw, req, tmpl, map[string]interface{}{
-		"name":    model.Name,
-		"slug":    slug,
-		"columns": columns,
+		"name": model.Name,
+		"slug": slug,
+
+		"columns":  columns,
+		"colNames": colNames,
+		"sort":     sortBy,
+		"sortDesc": sortDesc,
+
 		"results": strResults,
 
 		"page":     page,

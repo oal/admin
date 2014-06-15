@@ -18,8 +18,15 @@
 			<table class="table table-striped table-bordered">
 			<thead>
 				<tr>
-					{{range $col := .columns}}
-						<th>{{$col}}</th>
+					{{range $index, $colName := .colNames}}
+						<th>
+							{{if eq $.sort $colName}}
+								<small class="glyphicon glyphicon-chevron-{{if $.sortDesc}}down{{else}}up{{end}}"></small>
+								<a href="?sort={{if not $.sortDesc}}-{{end}}{{$colName}}">{{index $.columns $index}}</a>
+							{{else}}
+								<a href="?sort={{$colName}}">{{index $.columns $index}}</a>
+							{{end}}
+						</th>
 					{{end}}
 					<th style="width: 100px">&nbsp;</th>
 				</tr>
