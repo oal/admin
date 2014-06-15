@@ -81,6 +81,7 @@ func (a *Admin) handleList(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	// Columns
 	columns := []string{}
 	colNames := []string{}
 	for _, field := range model.fields {
@@ -90,13 +91,14 @@ func (a *Admin) handleList(rw http.ResponseWriter, req *http.Request) {
 		}
 	}
 
+	// GET parameters
 	req.ParseForm()
 	q := req.Form.Get("q")
 
-	// TODO: Only allow valid field names.
+	// Sort
 	sortBy := req.Form.Get("sort")
 	if len(sortBy) == 0 {
-		sortBy = "Id"
+		sortBy = model.sort
 	}
 	sortDesc := false
 	if sortBy[0] == '-' {
@@ -104,11 +106,17 @@ func (a *Admin) handleList(rw http.ResponseWriter, req *http.Request) {
 		sortDesc = true
 	}
 
+	if model.fieldByName(sortBy) == nil {
+		sortBy = ""
+	}
+
+	// Page number
 	page, err := strconv.ParseUint(req.Form.Get("page"), 10, 64)
 	if err != nil {
 		page = 1
 	}
 
+	// Get data
 	results, rows, err := a.queryModel(model, q, sortBy, sortDesc, int(page))
 	if err != nil {
 		fmt.Println(err)
@@ -123,6 +131,7 @@ func (a *Admin) handleList(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	// Render / format field data
 	strResults := [][]template.HTML{}
 	fields := model.listFields
 	for _, row := range results {
@@ -133,6 +142,7 @@ func (a *Admin) handleList(rw http.ResponseWriter, req *http.Request) {
 		strResults = append(strResults, s)
 	}
 
+	// Full list view or popup window
 	var tmpl string
 	if view, ok := vars["view"]; ok && view == "popup" {
 		tmpl = "popup.html"
@@ -140,6 +150,7 @@ func (a *Admin) handleList(rw http.ResponseWriter, req *http.Request) {
 		tmpl = "list.html"
 	}
 
+	// Page numbers
 	pages := make([]int, int(float64(rows)/25.0+0.5))
 	for i, _ := range pages {
 		pages[i] = i + 1

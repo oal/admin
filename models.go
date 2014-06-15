@@ -14,6 +14,10 @@ type NamedModel interface {
 	AdminName() string
 }
 
+type SortedModel interface {
+	SortBy() string
+}
+
 type modelGroup struct {
 	admin  *Admin
 	Name   string
@@ -128,6 +132,13 @@ func (g *modelGroup) RegisterModel(mdl interface{}) error {
 		newModel.fieldNames = append(newModel.fieldNames, fieldName)
 	}
 
+	// Default sorting in list view
+	if sorted, ok := mdl.(SortedModel); ok && newModel.fieldByName(sorted.SortBy()) != nil {
+		newModel.sort = sorted.SortBy()
+	} else {
+		newModel.sort = "-Id"
+	}
+
 	g.admin.models[newModel.Slug] = &newModel
 	g.Models = append(g.Models, &newModel)
 
@@ -224,6 +235,7 @@ type model struct {
 	fieldNames        []string
 	listFields        []fields.Field
 	searchableColumns []string
+	sort              string
 }
 
 func (m *model) renderForm(w io.Writer, data map[string]interface{}, defaults bool, errors map[string]string) {
