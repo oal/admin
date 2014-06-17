@@ -38,11 +38,12 @@ func (a *Admin) queryModel(mdl *model, search, sortBy string, sortDesc bool, pag
 	for _, field := range mdl.fields {
 		if field.Attrs().List {
 			colName := fmt.Sprintf("%v.%v", mdl.tableName, field.Attrs().ColumnName)
-			if fk, ok := field.(*fields.ForeignKeyField); ok && len(fk.ListColumn) > 0 {
-				fkColName := fmt.Sprintf("%v.%v", fk.TableName, fk.ListColumn)
-				fkWhere = append(fkWhere, fmt.Sprintf("%v = %v.id", colName, fk.TableName))
+			if fk, ok := field.(*fields.ForeignKeyField); ok && len(fk.GetListColumn()) > 0 {
+				relTable := fk.GetRelatedTable()
+				fkColName := fmt.Sprintf("%v.%v", relTable, fk.GetListColumn())
+				fkWhere = append(fkWhere, fmt.Sprintf("%v = %v.id", colName, relTable))
 				colName = fkColName
-				tables = append(tables, fk.TableName)
+				tables = append(tables, relTable)
 			}
 			cols = append(cols, colName)
 		}

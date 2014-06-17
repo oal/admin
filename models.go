@@ -49,18 +49,18 @@ func (g *modelGroup) RegisterModel(mdl interface{}) error {
 	}
 
 	// Set as registered so it can be used as a ForeignKey from other models
-	if _, ok := g.admin.registeredFKs[modelType]; !ok {
-		g.admin.registeredFKs[modelType] = &newModel
+	if _, ok := g.admin.registeredRels[modelType]; !ok {
+		g.admin.registeredRels[modelType] = &newModel
 	}
 
 	// Check if any fields previously registered is missing this model as a foreign key
-	for field, modelType := range g.admin.missingFKs {
+	for field, modelType := range g.admin.missingRels {
 		if modelType != modelType {
 			continue
 		}
 
-		field.ModelSlug = newModel.Slug
-		delete(g.admin.missingFKs, field)
+		field.SetModelSlug(newModel.Slug)
+		delete(g.admin.missingRels, field)
 	}
 
 	// Loop over struct fields and set up fields
@@ -91,23 +91,23 @@ func (g *modelGroup) RegisterModel(mdl interface{}) error {
 		field := makeField(kind, override)
 
 		// Foreign keys need some additional data added to them
-		if fkField, ok := field.(*fields.ForeignKeyField); ok {
+		if relField, ok := field.(fields.RelationalField); ok {
 			// If column is shown in list view, and a field in related model is set to be listed
 			if listField, ok := tagMap["list"]; ok && len(listField) != 0 {
-				fkField.TableName = typeToTableName(refl.Type, g.admin.NameTransform)
+				relField.SetRelatedTable(typeToTableName(refl.Type, g.admin.NameTransform))
 				if g.admin.NameTransform != nil {
 					listField = g.admin.NameTransform(listField)
 				}
-				fkField.ListColumn = listField
+				relField.SetListColumn(listField)
 			}
 
 			// We also need the field to know what model it's related to
-			if regModel, ok := g.admin.registeredFKs[fieldType]; ok {
-				fkField.ModelSlug = regModel.Slug
+			if regModel, ok := g.admin.registeredRels[fieldType]; ok {
+				relField.SetModelSlug(regModel.Slug)
 			} else {
-				g.admin.missingFKs[field.(*fields.ForeignKeyField)] = refl.Type
+				g.admin.missingRels[relField] = refl.Type
 			}
-			field = fkField
+			field, _ = relField.(fields.Field)
 		}
 
 		// Expect pointers to be foreign keys and foreign keys to have the form Field[Id]
@@ -173,6 +173,8 @@ func makeField(kind reflect.Kind, override string) fields.Field {
 			field = &fields.TimeField{BaseField: &fields.BaseField{}}
 		case reflect.Ptr:
 			field = &fields.ForeignKeyField{BaseField: &fields.BaseField{}}
+		case reflect.Slice:
+			field = &fields.ManyToManyField{BaseField: &fields.BaseField{}}
 		default:
 			fmt.Println("Unknown field type")
 			field = &fields.TextField{BaseField: &fields.BaseField{}}

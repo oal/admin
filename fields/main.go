@@ -22,6 +22,15 @@ type FileHandlerField interface {
 	HandleFile(*multipart.FileHeader) (string, error)
 }
 
+type RelationalField interface {
+	SetRelatedTable(string)
+	GetRelatedTable() string
+	SetListColumn(string)
+	GetListColumn() string
+	SetModelSlug(string)
+	GetModelSlug() string
+}
+
 type BaseField struct {
 	Name         string
 	Label        string

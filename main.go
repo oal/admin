@@ -29,11 +29,11 @@ type Admin struct {
 
 	SourceDir string
 
-	db            *sql.DB
-	models        map[string]*model
-	modelGroups   []*modelGroup
-	registeredFKs map[reflect.Type]*model
-	missingFKs    map[*fields.ForeignKeyField]reflect.Type
+	db             *sql.DB
+	models         map[string]*model
+	modelGroups    []*modelGroup
+	registeredRels map[reflect.Type]*model
+	missingRels    map[fields.RelationalField]reflect.Type
 }
 
 // Setup registers page handlers and enables the admin.
@@ -81,8 +81,8 @@ func Setup(admin *Admin) (*Admin, error) {
 	// Model init
 	admin.models = map[string]*model{}
 	admin.modelGroups = []*modelGroup{}
-	admin.registeredFKs = map[reflect.Type]*model{}
-	admin.missingFKs = map[*fields.ForeignKeyField]reflect.Type{}
+	admin.registeredRels = map[reflect.Type]*model{}
+	admin.missingRels = map[fields.RelationalField]reflect.Type{}
 
 	// Routes
 	sr := admin.Router.PathPrefix(admin.Path).Subrouter()

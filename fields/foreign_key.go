@@ -16,16 +16,41 @@ var foreignKeyTemplate = template.Must(template.New("template").Parse(`
 
 type ForeignKeyField struct {
 	*BaseField
-	TableName  string
-	ListColumn string
-	ModelSlug  string
+
+	table  string
+	column string
+	model  string
 }
 
 func (f *ForeignKeyField) Render(w io.Writer, val interface{}, err string, startRow bool) {
 	f.BaseRender(w, foreignKeyTemplate, val, err, startRow, map[string]interface{}{
-		"modelSlug": f.ModelSlug,
+		"modelSlug": f.model,
 	})
 }
 func (f *ForeignKeyField) Validate(val string) (interface{}, error) {
 	return val, nil
+}
+
+func (f *ForeignKeyField) SetRelatedTable(table string) {
+	f.table = table
+}
+
+func (f *ForeignKeyField) GetRelatedTable() string {
+	return f.table
+}
+
+func (f *ForeignKeyField) SetListColumn(column string) {
+	f.column = column
+}
+
+func (f *ForeignKeyField) GetListColumn() string {
+	return f.column
+}
+
+func (f *ForeignKeyField) SetModelSlug(slug string) {
+	f.model = slug
+}
+
+func (f *ForeignKeyField) GetModelSlug() string {
+	return f.model
 }
