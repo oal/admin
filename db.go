@@ -117,29 +117,47 @@ func (a *Admin) queryModel(mdl *model, search, sortBy string, sortDesc bool, pag
 
 // querySingleModel is used in edit view.
 func (a *Admin) querySingleModel(mdl *model, id int) (map[string]interface{}, error) {
-	numCols := len(mdl.fieldNames)
+	cols := make([]string, 0, len(mdl.fieldNames))
+	m2mFields := map[string]struct{}{}
 
 	// Can't do * as column order in the DB might not match struct
-	cols := make([]string, numCols)
-	for i, fieldName := range mdl.fieldNames {
+	for _, fieldName := range mdl.fieldNames {
+		// Add to m2mFields so we can load it later
+		if _, ok := mdl.fieldByName(fieldName).(*fields.ManyToManyField); ok {
+			m2mFields[fieldName] = struct{}{}
+			continue
+		}
+
+		// Normal columns will be loaded directly in the main query
 		if a.NameTransform != nil {
 			fieldName = a.NameTransform(fieldName)
 		}
-		cols[i] = fieldName
+		cols = append(cols, fieldName)
 	}
 
 	q := fmt.Sprintf("SELECT %v FROM %v WHERE id = ?", strings.Join(cols, ", "), mdl.tableName)
 	row := a.db.QueryRow(q, id)
 
-	result, err := scanRow(numCols, row)
+	result, err := scanRow(len(cols), row)
 	if err != nil {
 		return nil, err
 	}
 
+	// Loop over fields, and run separate query for M2Ms. Iterator index i only increases if there is value for column in main query.
 	resultMap := map[string]interface{}{}
-	for i, val := range result {
-		resultMap[mdl.fieldNames[i]] = val
+	i := 0
+	for _, fieldName := range mdl.fieldNames {
+		if _, ok := m2mFields[fieldName]; ok {
+			// TODO: Separate query.
+			resultMap[fieldName] = []int{1, 2, 3}
+			continue
+		}
+
+		resultMap[fieldName] = result[i]
+		i++
 	}
+
+	fmt.Println(resultMap)
 
 	return resultMap, nil
 }
