@@ -69,10 +69,10 @@ func (g *modelGroup) RegisterModel(mdl interface{}) error {
 		fieldType := refl.Type
 		kind := fieldType.Kind()
 
-		// If slice, get type / kind of elements instead
-		if kind == reflect.Slice {
-			fieldType = fieldType.Elem()
-			kind = fieldType.Kind()
+		// Expect pointers to be foreign keys and foreign keys to have the form Field[Id]
+		fieldName := refl.Name
+		if kind == reflect.Ptr {
+			fieldName += "Id"
 		}
 
 		// Parse key=val / key options from struct tag, used for configuration later
@@ -96,7 +96,14 @@ func (g *modelGroup) RegisterModel(mdl interface{}) error {
 		override, _ := tagMap["field"]
 		field := makeField(kind, override)
 
-		// Foreign keys need some additional data added to them
+		// If slice, get type / kind of elements instead
+		// makeField still needs to know it's a slice, but this is needed below
+		if kind == reflect.Slice {
+			fieldType = fieldType.Elem()
+			kind = fieldType.Kind()
+		}
+
+		// Relationships need some additional data added to them
 		if relField, ok := field.(fields.RelationalField); ok {
 			// If column is shown in list view, and a field in related model is set to be listed
 			if listField, ok := tagMap["list"]; ok && len(listField) != 0 {
@@ -114,12 +121,6 @@ func (g *modelGroup) RegisterModel(mdl interface{}) error {
 				g.admin.missingRels[relField] = fieldType
 			}
 			field, _ = relField.(fields.Field)
-		}
-
-		// Expect pointers to be foreign keys and foreign keys to have the form Field[Id]
-		fieldName := refl.Name
-		if kind == reflect.Ptr {
-			fieldName += "Id"
 		}
 
 		// Transform struct keys to DB column names if needed

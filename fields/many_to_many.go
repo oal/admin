@@ -9,7 +9,7 @@ import (
 
 var m2mTemplate = template.Must(template.New("template").Parse(`
 	<div class="input-group">
-		<input id="{{.name}}" name="{{.name}}" type="text" value="{{.value}}" class="form-control">
+		<input id="{{.name}}" name="{{.name}}" type="text" value="{{.value}}" data-multiple="true" class="form-control">
 		<span class="input-group-btn">
 			<button class="btn btn-default btn-fk-search" type="button" data-name="{{.name}}" data-slug="{{.modelSlug}}">Search...</button>
 		</span>

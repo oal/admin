@@ -60,11 +60,33 @@
 	<script src="{{.path}}/static/js/jquery.min.js"></script>
 	<script>
 	$(function() {
+		var opener = window.opener.document;
+		var el = $('#'+window.name, opener);
+		var multiple = el.data('multiple');
 		$('.btn-use').on('click', function() {
-			window.opener.document.getElementById(window.name).value = $(this).data('id');
+			var val = $(this).data('id');
+			var existing = el.val();
+
+			if(multiple === true && existing.length > 0) {
+				ids = existing.split(',');
+				idNums = [];
+				for (var i = 0; i < ids.length; i++) {
+					var id = parseInt(ids[i]);
+					if(idNums.indexOf(id) === -1) {
+						idNums.push(id);
+					}
+				};
+
+				if(idNums.indexOf(parseInt(val)) === -1) {
+					idNums.push(val);
+				}
+				val = idNums.join(', ');
+			}
+
+			el.val(val);
 			window.close();
-		})
-	})
+		});
+	});
 	</script>
 </body>
 </html>
