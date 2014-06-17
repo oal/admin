@@ -54,8 +54,8 @@ func (g *modelGroup) RegisterModel(mdl interface{}) error {
 	}
 
 	// Check if any fields previously registered is missing this model as a foreign key
-	for field, modelType := range g.admin.missingRels {
-		if modelType != modelType {
+	for field, missingType := range g.admin.missingRels {
+		if missingType != modelType {
 			continue
 		}
 
@@ -68,6 +68,12 @@ func (g *modelGroup) RegisterModel(mdl interface{}) error {
 		refl := modelType.Elem().Field(i)
 		fieldType := refl.Type
 		kind := fieldType.Kind()
+
+		// If slice, get type / kind of elements instead
+		if kind == reflect.Slice {
+			fieldType = fieldType.Elem()
+			kind = fieldType.Kind()
+		}
 
 		// Parse key=val / key options from struct tag, used for configuration later
 		tag := refl.Tag.Get("admin")
@@ -94,7 +100,7 @@ func (g *modelGroup) RegisterModel(mdl interface{}) error {
 		if relField, ok := field.(fields.RelationalField); ok {
 			// If column is shown in list view, and a field in related model is set to be listed
 			if listField, ok := tagMap["list"]; ok && len(listField) != 0 {
-				relField.SetRelatedTable(typeToTableName(refl.Type, g.admin.NameTransform))
+				relField.SetRelatedTable(typeToTableName(fieldType, g.admin.NameTransform))
 				if g.admin.NameTransform != nil {
 					listField = g.admin.NameTransform(listField)
 				}
@@ -105,7 +111,7 @@ func (g *modelGroup) RegisterModel(mdl interface{}) error {
 			if regModel, ok := g.admin.registeredRels[fieldType]; ok {
 				relField.SetModelSlug(regModel.Slug)
 			} else {
-				g.admin.missingRels[relField] = refl.Type
+				g.admin.missingRels[relField] = fieldType
 			}
 			field, _ = relField.(fields.Field)
 		}

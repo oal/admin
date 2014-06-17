@@ -38,9 +38,9 @@ func (a *Admin) queryModel(mdl *model, search, sortBy string, sortDesc bool, pag
 	for _, field := range mdl.fields {
 		if field.Attrs().List {
 			colName := fmt.Sprintf("%v.%v", mdl.tableName, field.Attrs().ColumnName)
-			if fk, ok := field.(*fields.ForeignKeyField); ok && len(fk.GetListColumn()) > 0 {
-				relTable := fk.GetRelatedTable()
-				fkColName := fmt.Sprintf("%v.%v", relTable, fk.GetListColumn())
+			if relField, ok := field.(fields.RelationalField); ok && len(relField.GetListColumn()) > 0 {
+				relTable := relField.GetRelatedTable()
+				fkColName := fmt.Sprintf("%v.%v", relTable, relField.GetListColumn())
 				fkWhere = append(fkWhere, fmt.Sprintf("%v = %v.id", colName, relTable))
 				colName = fkColName
 				tables = append(tables, relTable)
