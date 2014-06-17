@@ -25,6 +25,15 @@ type ManyToManyField struct {
 }
 
 func (m *ManyToManyField) Render(w io.Writer, val interface{}, err string, startRow bool) {
+	// Get the formatting right
+	ids, ok := val.([]int)
+	if ok {
+		strIds := make([]string, len(ids))
+		for i, id := range ids {
+			strIds[i] = strconv.FormatInt(int64(id), 10)
+		}
+		val = strings.Join(strIds, ", ")
+	}
 	m.BaseRender(w, m2mTemplate, val, err, startRow, map[string]interface{}{
 		"modelSlug": m.model,
 	})

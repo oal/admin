@@ -148,16 +148,34 @@ func (a *Admin) querySingleModel(mdl *model, id int) (map[string]interface{}, er
 	i := 0
 	for _, fieldName := range mdl.fieldNames {
 		if _, ok := m2mFields[fieldName]; ok {
-			// TODO: Separate query.
-			resultMap[fieldName] = []int{1, 2, 3}
+			// Get Id of all related rows
+			field, ok := mdl.fieldByName(fieldName).(*fields.ManyToManyField)
+			if !ok {
+				continue
+			}
+			relTable := field.GetRelatedTable()
+
+			q := fmt.Sprintf("SELECT %v_id FROM %v_%v WHERE %v_id = ?", relTable, mdl.tableName, field.ColumnName, mdl.tableName)
+			rows, err := a.db.Query(q, id)
+			if err != nil {
+				return nil, err
+			}
+
+			ids := []int{}
+			for rows.Next() {
+				var relId int
+				rows.Scan(&relId)
+				ids = append(ids, relId)
+			}
+
+			resultMap[fieldName] = ids
 			continue
 		}
 
+		// Any other data type
 		resultMap[fieldName] = result[i]
 		i++
 	}
-
-	fmt.Println(resultMap)
 
 	return resultMap, nil
 }

@@ -107,12 +107,13 @@ func (g *modelGroup) RegisterModel(mdl interface{}) error {
 		if relField, ok := field.(fields.RelationalField); ok {
 			// If column is shown in list view, and a field in related model is set to be listed
 			if listField, ok := tagMap["list"]; ok && len(listField) != 0 {
-				relField.SetRelatedTable(typeToTableName(fieldType, g.admin.NameTransform))
 				if g.admin.NameTransform != nil {
 					listField = g.admin.NameTransform(listField)
 				}
 				relField.SetListColumn(listField)
 			}
+
+			relField.SetRelatedTable(typeToTableName(fieldType, g.admin.NameTransform))
 
 			// We also need the field to know what model it's related to
 			if regModel, ok := g.admin.registeredRels[fieldType]; ok {
