@@ -7,6 +7,7 @@ import (
 	"github.com/oal/admin/fields"
 	"html/template"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -263,6 +264,7 @@ func (a *Admin) handleSave(rw http.ResponseWriter, req *http.Request) (map[strin
 	// Get data from POST and fill a slice
 	data := map[string]interface{}{}
 	m2mData := map[string][]int{}
+	m2mChanges := false
 	errors := map[string]string{}
 	hasErrors := false
 	for i := 0; i < numFields; i++ {
@@ -282,6 +284,16 @@ func (a *Admin) handleSave(rw http.ResponseWriter, req *http.Request) (map[strin
 
 		// ManyToManyField
 		if ids, ok := val.([]int); ok {
+			// Has M2M data changed?
+			if existingIds, ok := existingVal.([]int); ok {
+				// FIXME: Maybe not the best way to compare slices?
+				sort.Ints(ids)
+				sort.Ints(existingIds)
+				m2mChanges = fmt.Sprint(ids) != fmt.Sprint(existingIds)
+			} else if len(ids) > 0 {
+				m2mChanges = true
+			}
+
 			m2mData[fieldName] = ids
 			continue
 		}
@@ -315,70 +327,74 @@ func (a *Admin) handleSave(rw http.ResponseWriter, req *http.Request) (map[strin
 	}
 
 	sess := a.getUserSession(req)
-	if len(changedCols) == 0 {
+	if len(changedCols) == 0 && !m2mChanges {
 		sess.addMessage("warning", fmt.Sprintf("%v was not saved because there were no changes.", model.Name))
 		http.Redirect(rw, req, a.modelURL(slug, fmt.Sprintf("/edit/%v", id)), 302)
 		return nil, nil
 	}
 
-	valMarks := strings.Repeat("?, ", len(changedCols))
-	valMarks = valMarks[0 : len(valMarks)-2]
+	if len(changedCols) > 0 {
+		valMarks := strings.Repeat("?, ", len(changedCols))
+		valMarks = valMarks[0 : len(valMarks)-2]
 
-	// Insert / update
-	var q string
-	if id != 0 {
-		q = fmt.Sprintf("UPDATE %v SET %v WHERE id = %v", model.tableName, strings.Join(changedCols, ", "), id)
-	} else {
-		q = fmt.Sprintf("INSERT INTO %v(%v) VALUES(%v)", model.tableName, strings.Join(changedCols, ", "), valMarks)
-	}
+		// Insert / update
+		var q string
+		if id != 0 {
+			q = fmt.Sprintf("UPDATE %v SET %v WHERE id = %v", model.tableName, strings.Join(changedCols, ", "), id)
+		} else {
+			q = fmt.Sprintf("INSERT INTO %v(%v) VALUES(%v)", model.tableName, strings.Join(changedCols, ", "), valMarks)
+		}
 
-	result, err := a.db.Exec(q, changedData...)
-	if err != nil {
-		fmt.Println(err)
-		return nil, nil
-	}
-
-	if newId, _ := result.LastInsertId(); id == 0 {
-		id = int(newId)
-	}
-
-	// Insert / update M2M
-	for fieldName, ids := range m2mData {
-		field, _ := model.fieldByName(fieldName).(*fields.ManyToManyField)
-
-		m2mTable := fmt.Sprintf("%v_%v", model.tableName, field.ColumnName)
-		toColumn := fmt.Sprintf("%v_id", field.GetRelatedTable())
-		fromColumn := fmt.Sprintf("%v_id", model.tableName)
-		q = fmt.Sprintf("SELECT %v FROM %v WHERE %v = ?", toColumn, m2mTable, fromColumn)
-
-		rows, err := a.db.Query(q, id)
+		result, err := a.db.Exec(q, changedData...)
 		if err != nil {
+			fmt.Println(err)
 			return nil, nil
 		}
 
-		removeRels := map[int]bool{}
-		for rows.Next() {
-			var eId int
-			rows.Scan(&eId)
-			removeRels[eId] = true
+		if newId, _ := result.LastInsertId(); id == 0 {
+			id = int(newId)
 		}
+	}
 
-		// Add new, remove from removeRels as we go. Those still left in removeRels will be deleted.
-		for _, nId := range ids {
-			if _, ok := removeRels[nId]; ok {
-				// Already exists,
-				delete(removeRels, nId)
-			} else {
-				// Relation doesn't exist yet, so add it
-				q = fmt.Sprintf("INSERT INTO %v (%v, %v) VALUES (?, ?)", m2mTable, fromColumn, toColumn)
-				a.db.Exec(q, id, nId)
+	if m2mChanges {
+		// Insert / update M2M
+		for fieldName, ids := range m2mData {
+			field, _ := model.fieldByName(fieldName).(*fields.ManyToManyField)
+
+			m2mTable := fmt.Sprintf("%v_%v", model.tableName, field.ColumnName)
+			toColumn := fmt.Sprintf("%v_id", field.GetRelatedTable())
+			fromColumn := fmt.Sprintf("%v_id", model.tableName)
+			q := fmt.Sprintf("SELECT %v FROM %v WHERE %v = ?", toColumn, m2mTable, fromColumn)
+
+			rows, err := a.db.Query(q, id)
+			if err != nil {
+				return nil, nil
 			}
-		}
 
-		// Delete remaining Ids in removeRels as they're no longer related
-		for eId, _ := range removeRels {
-			q = fmt.Sprintf("DELETE FROM %v WHERE %v = ? AND %v = ?", m2mTable, fromColumn, toColumn)
-			a.db.Exec(q, id, eId)
+			removeRels := map[int]bool{}
+			for rows.Next() {
+				var eId int
+				rows.Scan(&eId)
+				removeRels[eId] = true
+			}
+
+			// Add new, remove from removeRels as we go. Those still left in removeRels will be deleted.
+			for _, nId := range ids {
+				if _, ok := removeRels[nId]; ok {
+					// Already exists,
+					delete(removeRels, nId)
+				} else {
+					// Relation doesn't exist yet, so add it
+					q = fmt.Sprintf("INSERT INTO %v (%v, %v) VALUES (?, ?)", m2mTable, fromColumn, toColumn)
+					a.db.Exec(q, id, nId)
+				}
+			}
+
+			// Delete remaining Ids in removeRels as they're no longer related
+			for eId, _ := range removeRels {
+				q = fmt.Sprintf("DELETE FROM %v WHERE %v = ? AND %v = ?", m2mTable, fromColumn, toColumn)
+				a.db.Exec(q, id, eId)
+			}
 		}
 	}
 
@@ -424,6 +440,16 @@ func (a *Admin) handleDelete(rw http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		fmt.Println(err)
 		return
+	}
+
+	// Delete M2M relations
+	for _, fieldName := range model.fieldNames {
+		if field, ok := model.fieldByName(fieldName).(*fields.ManyToManyField); ok {
+			m2mTable := fmt.Sprintf("%v_%v", model.tableName, field.ColumnName)
+			fromColumn := fmt.Sprintf("%v_id", model.tableName)
+			q := fmt.Sprintf("DELETE FROM %v WHERE %v = ?", m2mTable, fromColumn)
+			a.db.Exec(q, id)
+		}
 	}
 
 	sess := a.getUserSession(req)
