@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/extemporalgenome/slug"
+	"github.com/oal/admin/db"
 	"github.com/oal/admin/fields"
 	"io"
 	"net/http"
@@ -306,10 +307,10 @@ func (m *model) get(id int) (map[string]interface{}, error) {
 		cols = append(cols, fieldName)
 	}
 
-	q := fmt.Sprintf("SELECT %v FROM %v WHERE id = ?", strings.Join(cols, ", "), m.tableName)
+	q := m.admin.dialect.Queryf("SELECT %v FROM %v WHERE id = ?", strings.Join(cols, ", "), m.tableName)
 	row := m.admin.db.QueryRow(q, id)
 
-	result, err := scanRow(len(cols), row)
+	result, err := db.ScanRow(len(cols), row)
 	if err != nil {
 		return nil, err
 	}
@@ -326,7 +327,7 @@ func (m *model) get(id int) (map[string]interface{}, error) {
 			}
 			relTable := field.GetRelatedTable()
 
-			q := fmt.Sprintf("SELECT %v_id FROM %v_%v WHERE %v_id = ?", relTable, m.tableName, field.ColumnName, m.tableName)
+			q := m.admin.dialect.Queryf("SELECT %v_id FROM %v_%v WHERE %v_id = ?", relTable, m.tableName, field.ColumnName, m.tableName)
 			rows, err := m.admin.db.Query(q, id)
 			if err != nil {
 				return nil, err
@@ -417,8 +418,8 @@ func (m *model) page(page int, search, sortBy string, sortDesc bool) ([][]interf
 	}
 
 	fromWhere := fmt.Sprintf("FROM %v %v", sqlTables, whereStr)
-	rowQuery := fmt.Sprintf("SELECT %v %v%v LIMIT %v,%v", sqlColumns, fromWhere, sortBy, page*25, 25)
-	countQuery := fmt.Sprintf("SELECT COUNT(*) %v", fromWhere)
+	rowQuery := m.admin.dialect.Queryf("SELECT %v %v%v LIMIT %v,%v", sqlColumns, fromWhere, sortBy, page*25, 25)
+	countQuery := m.admin.dialect.Queryf("SELECT COUNT(*) %v", fromWhere)
 
 	var rows *sql.Rows
 	var countRow *sql.Row
@@ -445,7 +446,7 @@ func (m *model) page(page int, search, sortBy string, sortDesc bool) ([][]interf
 	results := [][]interface{}{}
 
 	for rows.Next() {
-		result, err := scanRow(numCols, rows)
+		result, err := db.ScanRow(numCols, rows)
 		if err != nil {
 			return nil, numRows, err
 		}
@@ -544,9 +545,9 @@ func (m *model) save(id int, req *http.Request) (map[string]interface{}, map[str
 		// Insert / update
 		var q string
 		if id != 0 {
-			q = fmt.Sprintf("UPDATE %v SET %v WHERE id = %v", m.tableName, strings.Join(changedCols, ", "), id)
+			q = m.admin.dialect.Queryf("UPDATE %v SET %v WHERE id = %v", m.tableName, strings.Join(changedCols, ", "), id)
 		} else {
-			q = fmt.Sprintf("INSERT INTO %v(%v) VALUES(%v)", m.tableName, strings.Join(changedCols, ", "), valMarks)
+			q = m.admin.dialect.Queryf("INSERT INTO %v(%v) VALUES(%v)", m.tableName, strings.Join(changedCols, ", "), valMarks)
 		}
 
 		result, err := m.admin.db.Exec(q, changedData...)
@@ -578,9 +579,15 @@ func (m *model) saveM2M(id int, field *fields.ManyToManyField, relatedIds []int)
 	m2mTable := fmt.Sprintf("%v_%v", m.tableName, field.ColumnName)
 	toColumn := fmt.Sprintf("%v_id", field.GetRelatedTable())
 	fromColumn := fmt.Sprintf("%v_id", m.tableName)
-	q := fmt.Sprintf("SELECT %v FROM %v WHERE %v = ?", toColumn, m2mTable, fromColumn)
 
-	rows, err := m.admin.db.Query(q, id)
+	tx, err := m.admin.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Commit()
+
+	existingRelQuery := m.admin.dialect.Queryf("SELECT %v FROM %v WHERE %v = ?", toColumn, m2mTable, fromColumn)
+	rows, err := tx.Query(existingRelQuery, id)
 	if err != nil {
 		return err
 	}
@@ -599,15 +606,15 @@ func (m *model) saveM2M(id int, field *fields.ManyToManyField, relatedIds []int)
 			delete(removeRels, nId)
 		} else {
 			// Relation doesn't exist yet, so add it
-			q = fmt.Sprintf("INSERT INTO %v (%v, %v) VALUES (?, ?)", m2mTable, fromColumn, toColumn)
-			m.admin.db.Exec(q, id, nId)
+			addRelQuery := m.admin.dialect.Queryf("INSERT INTO %v (%v, %v) VALUES (?, ?)", m2mTable, fromColumn, toColumn)
+			tx.Exec(addRelQuery, id, nId)
 		}
 	}
 
 	// Delete remaining Ids in removeRels as they're no longer related
 	for eId, _ := range removeRels {
-		q = fmt.Sprintf("DELETE FROM %v WHERE %v = ? AND %v = ?", m2mTable, fromColumn, toColumn)
-		m.admin.db.Exec(q, id, eId)
+		removeRelQuery := m.admin.dialect.Queryf("DELETE FROM %v WHERE %v = ? AND %v = ?", m2mTable, fromColumn, toColumn)
+		tx.Exec(removeRelQuery, id, eId)
 	}
 
 	return nil
@@ -630,7 +637,7 @@ func (m *model) delete(id int) error {
 		if field, ok := m.fieldByName(fieldName).(*fields.ManyToManyField); ok {
 			m2mTable := fmt.Sprintf("%v_%v", m.tableName, field.ColumnName)
 			fromColumn := fmt.Sprintf("%v_id", m.tableName)
-			q := fmt.Sprintf("DELETE FROM %v WHERE %v = ?", m2mTable, fromColumn)
+			q := m.admin.dialect.Queryf("DELETE FROM %v WHERE %v = ?", m2mTable, fromColumn)
 			m.admin.db.Exec(q, id)
 		}
 	}

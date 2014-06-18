@@ -1,16 +1,16 @@
-package admin
+package db
 
 import (
 	"reflect"
 )
 
 // MultiScanner is like the db.Scan interface, but scans to a slice.
-type MultiScanner interface {
+type multiScanner interface {
 	Scan(src ...interface{}) error
 }
 
-// scanRow loads all data from a row into a string slice.
-func scanRow(numCols int, scanner MultiScanner) ([]interface{}, error) {
+// ScanRow loads all data from a row into a string slice.
+func ScanRow(numCols int, scanner multiScanner) ([]interface{}, error) {
 	// We can only scan into pointers, so create result and destination slices
 	result := make([]interface{}, numCols)
 	dest := make([]interface{}, numCols)

@@ -7,6 +7,7 @@ import (
 	"github.com/extemporalgenome/slug"
 	"github.com/gorilla/mux"
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/oal/admin/db"
 	"github.com/oal/admin/fields"
 	"html/template"
 	"net/http"
@@ -29,7 +30,9 @@ type Admin struct {
 
 	SourceDir string
 
-	db             *sql.DB
+	db      *sql.DB
+	dialect db.Dialect
+
 	models         map[string]*model
 	modelGroups    []*modelGroup
 	registeredRels map[reflect.Type]*model
@@ -72,11 +75,13 @@ func Setup(admin *Admin) (*Admin, error) {
 	}
 
 	// Database
-	db, err := sql.Open("sqlite3", admin.Database)
+	database, err := sql.Open("sqlite3", admin.Database)
 	if err != nil {
 		return nil, err
 	}
-	admin.db = db
+	admin.db = database
+
+	admin.dialect = db.BaseDialect{}
 
 	// Model init
 	admin.models = map[string]*model{}
