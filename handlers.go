@@ -262,6 +262,7 @@ func (a *Admin) handleSave(rw http.ResponseWriter, req *http.Request) (map[strin
 
 	// Get data from POST and fill a slice
 	data := map[string]interface{}{}
+	m2mData := map[string][]int{}
 	errors := map[string]string{}
 	hasErrors := false
 	for i := 0; i < numFields; i++ {
@@ -277,6 +278,12 @@ func (a *Admin) handleSave(rw http.ResponseWriter, req *http.Request) (map[strin
 		if err != nil {
 			errors[fieldName] = err.Error()
 			hasErrors = true
+		}
+
+		// ManyToManyField
+		if ids, ok := val.([]int); ok {
+			m2mData[fieldName] = ids
+			continue
 		}
 
 		data[fieldName] = val
@@ -325,12 +332,54 @@ func (a *Admin) handleSave(rw http.ResponseWriter, req *http.Request) (map[strin
 		q = fmt.Sprintf("INSERT INTO %v(%v) VALUES(%v)", model.tableName, strings.Join(changedCols, ", "), valMarks)
 	}
 
-	fmt.Println(q)
-
-	_, err = a.db.Exec(q, changedData...)
+	result, err := a.db.Exec(q, changedData...)
 	if err != nil {
 		fmt.Println(err)
 		return nil, nil
+	}
+
+	if newId, _ := result.LastInsertId(); id == 0 {
+		id = int(newId)
+	}
+
+	// Insert / update M2M
+	for fieldName, ids := range m2mData {
+		field, _ := model.fieldByName(fieldName).(*fields.ManyToManyField)
+
+		m2mTable := fmt.Sprintf("%v_%v", model.tableName, field.ColumnName)
+		toColumn := fmt.Sprintf("%v_id", field.GetRelatedTable())
+		fromColumn := fmt.Sprintf("%v_id", model.tableName)
+		q = fmt.Sprintf("SELECT %v FROM %v WHERE %v = ?", toColumn, m2mTable, fromColumn)
+
+		rows, err := a.db.Query(q, id)
+		if err != nil {
+			return nil, nil
+		}
+
+		removeRels := map[int]bool{}
+		for rows.Next() {
+			var eId int
+			rows.Scan(&eId)
+			removeRels[eId] = true
+		}
+
+		// Add new, remove from removeRels as we go. Those still left in removeRels will be deleted.
+		for _, nId := range ids {
+			if _, ok := removeRels[nId]; ok {
+				// Already exists,
+				delete(removeRels, nId)
+			} else {
+				// Relation doesn't exist yet, so add it
+				q = fmt.Sprintf("INSERT INTO %v (%v, %v) VALUES (?, ?)", m2mTable, fromColumn, toColumn)
+				a.db.Exec(q, id, nId)
+			}
+		}
+
+		// Delete remaining Ids in removeRels as they're no longer related
+		for eId, _ := range removeRels {
+			q = fmt.Sprintf("DELETE FROM %v WHERE %v = ? AND %v = ?", m2mTable, fromColumn, toColumn)
+			a.db.Exec(q, id, eId)
+		}
 	}
 
 	sess.addMessage("success", fmt.Sprintf("%v has been saved.", model.Name))

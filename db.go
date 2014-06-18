@@ -77,7 +77,6 @@ func (a *Admin) queryModel(mdl *model, search, sortBy string, sortDesc bool, pag
 	fromWhere := fmt.Sprintf("FROM %v %v", sqlTables, whereStr)
 	rowQuery := fmt.Sprintf("SELECT %v %v%v LIMIT %v,%v", sqlColumns, fromWhere, sortBy, page*25, 25)
 	countQuery := fmt.Sprintf("SELECT COUNT(*) %v", fromWhere)
-	fmt.Println(rowQuery)
 
 	var rows *sql.Rows
 	var countRow *sql.Row
@@ -95,7 +94,6 @@ func (a *Admin) queryModel(mdl *model, search, sortBy string, sortDesc bool, pag
 	if err != nil {
 		fmt.Println(err)
 	}
-	fmt.Println(numRows)
 
 	if err != nil {
 		return nil, numRows, err
