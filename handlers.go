@@ -4,12 +4,9 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/gorilla/mux"
-	"github.com/oal/admin/fields"
 	"html/template"
 	"net/http"
-	"sort"
 	"strconv"
-	"strings"
 )
 
 var templates *template.Template
@@ -250,162 +247,21 @@ func (a *Admin) handleSave(rw http.ResponseWriter, req *http.Request) (map[strin
 		}
 	}
 
-	numFields := len(model.fieldNames) - 1 // No need for ID.
-
-	// Get existing data, if any, so we can check what values were changed (existing == nil for new rows)
-	var existing map[string]interface{}
-	if id != 0 {
-		existing, err = a.querySingleModel(model, id)
-		if err != nil {
-			panic(err)
-		}
-	}
-
-	// Get data from POST and fill a slice
-	data := map[string]interface{}{}
-	m2mData := map[string][]int{}
-	m2mChanges := false
-	errors := map[string]string{}
-	hasErrors := false
-	for i := 0; i < numFields; i++ {
-		fieldName := model.fieldNames[i+1]
-		field := model.fieldByName(fieldName)
-
-		var existingVal interface{}
-		if existing != nil {
-			existingVal = existing[fieldName]
-		}
-
-		val, err := fields.Validate(field, req, existingVal)
-		if err != nil {
-			errors[fieldName] = err.Error()
-			hasErrors = true
-		}
-
-		// ManyToManyField
-		if ids, ok := val.([]int); ok {
-			// Has M2M data changed?
-			if existingIds, ok := existingVal.([]int); ok {
-				// FIXME: Maybe not the best way to compare slices?
-				sort.Ints(ids)
-				sort.Ints(existingIds)
-				m2mChanges = fmt.Sprint(ids) != fmt.Sprint(existingIds)
-			} else if len(ids) > 0 {
-				m2mChanges = true
-			}
-
-			m2mData[fieldName] = ids
-			continue
-		}
-
-		data[fieldName] = val
-	}
-
-	if hasErrors {
-		return data, errors
-	}
-
-	// Create query only with the changed data
-	changedCols := []string{}
-	changedData := []interface{}{}
-	for key, value := range data {
-		// Skip if not changed
-		if existing != nil && value == existing[key] {
-			continue
-		}
-
-		// Convert to DB version of name and append
-		col := key
-		if a.NameTransform != nil {
-			col = a.NameTransform(key)
-		}
-		if id != 0 {
-			col = fmt.Sprintf("%v = ?", col)
-		}
-		changedCols = append(changedCols, col)
-		changedData = append(changedData, value)
-	}
-
 	sess := a.getUserSession(req)
-	if len(changedCols) == 0 && !m2mChanges {
-		sess.addMessage("warning", fmt.Sprintf("%v was not saved because there were no changes.", model.Name))
+	data, dataErrors, err := model.save(id, req)
+	if err != nil {
+		sess.addMessage("warning", err.Error())
 		http.Redirect(rw, req, a.modelURL(slug, fmt.Sprintf("/edit/%v", id)), 302)
+		return data, dataErrors
+	} else {
+		sess.addMessage("success", fmt.Sprintf("%v has been saved.", model.Name))
+		if req.Form.Get("done") == "true" {
+			http.Redirect(rw, req, a.modelURL(slug, ""), 302)
+		} else {
+			http.Redirect(rw, req, a.modelURL(slug, fmt.Sprintf("/edit/%v", id)), 302)
+		}
 		return nil, nil
 	}
-
-	if len(changedCols) > 0 {
-		valMarks := strings.Repeat("?, ", len(changedCols))
-		valMarks = valMarks[0 : len(valMarks)-2]
-
-		// Insert / update
-		var q string
-		if id != 0 {
-			q = fmt.Sprintf("UPDATE %v SET %v WHERE id = %v", model.tableName, strings.Join(changedCols, ", "), id)
-		} else {
-			q = fmt.Sprintf("INSERT INTO %v(%v) VALUES(%v)", model.tableName, strings.Join(changedCols, ", "), valMarks)
-		}
-
-		result, err := a.db.Exec(q, changedData...)
-		if err != nil {
-			fmt.Println(err)
-			return nil, nil
-		}
-
-		if newId, _ := result.LastInsertId(); id == 0 {
-			id = int(newId)
-		}
-	}
-
-	if m2mChanges {
-		// Insert / update M2M
-		for fieldName, ids := range m2mData {
-			field, _ := model.fieldByName(fieldName).(*fields.ManyToManyField)
-
-			m2mTable := fmt.Sprintf("%v_%v", model.tableName, field.ColumnName)
-			toColumn := fmt.Sprintf("%v_id", field.GetRelatedTable())
-			fromColumn := fmt.Sprintf("%v_id", model.tableName)
-			q := fmt.Sprintf("SELECT %v FROM %v WHERE %v = ?", toColumn, m2mTable, fromColumn)
-
-			rows, err := a.db.Query(q, id)
-			if err != nil {
-				return nil, nil
-			}
-
-			removeRels := map[int]bool{}
-			for rows.Next() {
-				var eId int
-				rows.Scan(&eId)
-				removeRels[eId] = true
-			}
-
-			// Add new, remove from removeRels as we go. Those still left in removeRels will be deleted.
-			for _, nId := range ids {
-				if _, ok := removeRels[nId]; ok {
-					// Already exists,
-					delete(removeRels, nId)
-				} else {
-					// Relation doesn't exist yet, so add it
-					q = fmt.Sprintf("INSERT INTO %v (%v, %v) VALUES (?, ?)", m2mTable, fromColumn, toColumn)
-					a.db.Exec(q, id, nId)
-				}
-			}
-
-			// Delete remaining Ids in removeRels as they're no longer related
-			for eId, _ := range removeRels {
-				q = fmt.Sprintf("DELETE FROM %v WHERE %v = ? AND %v = ?", m2mTable, fromColumn, toColumn)
-				a.db.Exec(q, id, eId)
-			}
-		}
-	}
-
-	sess.addMessage("success", fmt.Sprintf("%v has been saved.", model.Name))
-
-	if req.Form.Get("done") == "true" {
-		http.Redirect(rw, req, a.modelURL(slug, ""), 302)
-	} else {
-		http.Redirect(rw, req, a.modelURL(slug, fmt.Sprintf("/edit/%v", id)), 302)
-	}
-	return nil, nil
 }
 
 func (a *Admin) handleDelete(rw http.ResponseWriter, req *http.Request) {
@@ -429,31 +285,14 @@ func (a *Admin) handleDelete(rw http.ResponseWriter, req *http.Request) {
 		}
 	}
 
-	_, err := a.querySingleModel(model, id)
-	if err != nil {
-		http.NotFound(rw, req)
-		return
-	}
-
-	q := fmt.Sprintf("DELETE FROM %v WHERE id=?", model.tableName)
-	_, err = a.db.Exec(q, id)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	// Delete M2M relations
-	for _, fieldName := range model.fieldNames {
-		if field, ok := model.fieldByName(fieldName).(*fields.ManyToManyField); ok {
-			m2mTable := fmt.Sprintf("%v_%v", model.tableName, field.ColumnName)
-			fromColumn := fmt.Sprintf("%v_id", model.tableName)
-			q := fmt.Sprintf("DELETE FROM %v WHERE %v = ?", m2mTable, fromColumn)
-			a.db.Exec(q, id)
-		}
-	}
-
+	err := model.delete(id)
 	sess := a.getUserSession(req)
-	sess.addMessage("success", fmt.Sprintf("%v has been deleted.", model.Name))
+	if err == nil {
+		sess.addMessage("success", fmt.Sprintf("%v has been deleted.", model.Name))
+	} else {
+		sess.addMessage("warning", err.Error())
+	}
+
 	http.Redirect(rw, req, a.modelURL(slug, ""), 302)
 	return
 }
