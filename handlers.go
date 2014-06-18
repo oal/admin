@@ -115,7 +115,7 @@ func (a *Admin) handleList(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	// Get data
-	results, rows, err := a.queryModel(model, q, sortBy, sortDesc, int(page))
+	results, rows, err := model.page(int(page), q, sortBy, sortDesc)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -206,7 +206,7 @@ func (a *Admin) handleEdit(rw http.ResponseWriter, req *http.Request) {
 	// If no errors / not yet submitted for validation, and we're editing, get data from db
 	if errors == nil && id != 0 {
 		var err error
-		data, err = a.querySingleModel(model, id)
+		data, err = model.get(id)
 		if err != nil {
 			http.NotFound(rw, req)
 			return
