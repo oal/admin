@@ -3,7 +3,7 @@ package admin
 import (
 	"bytes"
 	"fmt"
-	"github.com/gorilla/mux"
+	"github.com/julienschmidt/httprouter"
 	"html/template"
 	"net/http"
 	"strconv"
@@ -12,7 +12,7 @@ import (
 var templates *template.Template
 
 func (a *Admin) render(rw http.ResponseWriter, req *http.Request, tmpl string, ctx map[string]interface{}) {
-	ctx["title"] = a.Title
+	ctx["title"] = a.title
 	ctx["path"] = a.Path
 	ctx["q"] = req.Form.Get("q")
 	if _, ok := ctx["anonymous"]; !ok {
@@ -31,17 +31,17 @@ func (a *Admin) render(rw http.ResponseWriter, req *http.Request, tmpl string, c
 }
 
 // handlerWrapper is used to redirect to index / log in page.
-func (a *Admin) handlerWrapper(h http.HandlerFunc) http.HandlerFunc {
-	return func(rw http.ResponseWriter, req *http.Request) {
+func (a *Admin) handlerWrapper(h httprouter.Handle) httprouter.Handle {
+	return func(rw http.ResponseWriter, req *http.Request, params httprouter.Params) {
 		if a.getUserSession(req) == nil && req.URL.Path != a.Path+"/" {
 			http.Redirect(rw, req, a.Path, 302)
 			return
 		}
-		h.ServeHTTP(rw, req)
+		h(rw, req, params)
 	}
 }
 
-func (a *Admin) handleIndex(rw http.ResponseWriter, req *http.Request) {
+func (a *Admin) handleIndex(rw http.ResponseWriter, req *http.Request, _ httprouter.Params) {
 	if a.getUserSession(req) == nil {
 		if req.Method == "POST" {
 			req.ParseForm()
@@ -60,7 +60,7 @@ func (a *Admin) handleIndex(rw http.ResponseWriter, req *http.Request) {
 	})
 }
 
-func (a *Admin) handleLogout(rw http.ResponseWriter, req *http.Request) {
+func (a *Admin) handleLogout(rw http.ResponseWriter, req *http.Request, _ httprouter.Params) {
 	cookie, err := req.Cookie("admin")
 	if err != nil {
 		return
@@ -69,9 +69,8 @@ func (a *Admin) handleLogout(rw http.ResponseWriter, req *http.Request) {
 	delete(a.sessions, cookie.Value)
 	http.Redirect(rw, req, a.Path, 302)
 }
-func (a *Admin) handleList(rw http.ResponseWriter, req *http.Request) {
-	vars := mux.Vars(req)
-	slug := vars["slug"]
+func (a *Admin) handleList(rw http.ResponseWriter, req *http.Request, ps httprouter.Params) {
+	slug := ps.ByName("slug")
 
 	model, ok := a.models[slug]
 	if !ok {
@@ -142,7 +141,7 @@ func (a *Admin) handleList(rw http.ResponseWriter, req *http.Request) {
 
 	// Full list view or popup window
 	var tmpl string
-	if view, ok := vars["view"]; ok && view == "popup" {
+	if view := ps.ByName("view"); view == "popup" {
 		tmpl = "popup.html"
 	} else {
 		tmpl = "list.html"
@@ -172,20 +171,18 @@ func (a *Admin) handleList(rw http.ResponseWriter, req *http.Request) {
 	})
 }
 
-func (a *Admin) handleEdit(rw http.ResponseWriter, req *http.Request) {
+func (a *Admin) handleEdit(rw http.ResponseWriter, req *http.Request, ps httprouter.Params) {
 	var data map[string]interface{}
 	var errors map[string]string
 	if req.Method == "POST" {
-		data, errors = a.handleSave(rw, req)
+		data, errors = a.handleSave(rw, req, ps)
 		if data == nil {
 			return
 		}
 	}
 
 	// The model we're editing
-	vars := mux.Vars(req)
-	slug := vars["slug"]
-
+	slug := ps.ByName("slug")
 	model, ok := a.models[slug]
 	if !ok {
 		http.NotFound(rw, req)
@@ -194,7 +191,7 @@ func (a *Admin) handleEdit(rw http.ResponseWriter, req *http.Request) {
 
 	// Get ID if we're editing something
 	var id int
-	if idStr, ok := vars["id"]; ok {
+	if idStr := ps.ByName("id"); len(idStr) > 0 {
 		id64, err := strconv.ParseInt(idStr, 10, 64)
 		id = int(id64)
 		if err != nil {
@@ -225,14 +222,13 @@ func (a *Admin) handleEdit(rw http.ResponseWriter, req *http.Request) {
 	})
 }
 
-func (a *Admin) handleSave(rw http.ResponseWriter, req *http.Request) (map[string]interface{}, map[string]string) {
+func (a *Admin) handleSave(rw http.ResponseWriter, req *http.Request, ps httprouter.Params) (map[string]interface{}, map[string]string) {
 	err := req.ParseMultipartForm(1024 * 1000)
 	if err != nil {
 		return nil, nil
 	}
 
-	vars := mux.Vars(req)
-	slug := vars["slug"]
+	slug := ps.ByName("slug")
 	model, ok := a.models[slug]
 	if !ok {
 		http.NotFound(rw, req)
@@ -240,7 +236,7 @@ func (a *Admin) handleSave(rw http.ResponseWriter, req *http.Request) (map[strin
 	}
 
 	id := 0
-	if idStr, ok := vars["id"]; ok {
+	if idStr := ps.ByName("id"); len(idStr) > 0 {
 		id, err = parseInt(idStr)
 		if err != nil {
 			return nil, nil
@@ -251,25 +247,21 @@ func (a *Admin) handleSave(rw http.ResponseWriter, req *http.Request) (map[strin
 	data, dataErrors, err := model.save(id, req)
 	if err != nil {
 		sess.addMessage("warning", err.Error())
-		http.Redirect(rw, req, a.modelURL(slug, fmt.Sprintf("/edit/%v", id)), 302)
+		http.Redirect(rw, req, a.modelURL(slug, "edit", id), 302)
 		return data, dataErrors
 	} else {
 		sess.addMessage("success", fmt.Sprintf("%v has been saved.", model.Name))
 		if req.Form.Get("done") == "true" {
-			http.Redirect(rw, req, a.modelURL(slug, ""), 302)
+			http.Redirect(rw, req, a.modelURL(slug, "view", 0), 302)
 		} else {
-			http.Redirect(rw, req, a.modelURL(slug, fmt.Sprintf("/edit/%v", id)), 302)
+			http.Redirect(rw, req, a.modelURL(slug, "edit", id), 302)
 		}
 		return nil, nil
 	}
 }
 
-func (a *Admin) handleDelete(rw http.ResponseWriter, req *http.Request) {
-
-	// The model we're editing
-	vars := mux.Vars(req)
-	slug := vars["slug"]
-
+func (a *Admin) handleDelete(rw http.ResponseWriter, req *http.Request, ps httprouter.Params) {
+	slug := ps.ByName("slug")
 	model, ok := a.models[slug]
 	if !ok {
 		http.NotFound(rw, req)
@@ -277,7 +269,7 @@ func (a *Admin) handleDelete(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	id := 0
-	if idStr, ok := vars["id"]; ok {
+	if idStr := ps.ByName("id"); len(idStr) > 0 {
 		var err error
 		id, err = parseInt(idStr)
 		if err != nil {
@@ -293,6 +285,6 @@ func (a *Admin) handleDelete(rw http.ResponseWriter, req *http.Request) {
 		sess.addMessage("warning", err.Error())
 	}
 
-	http.Redirect(rw, req, a.modelURL(slug, ""), 302)
+	http.Redirect(rw, req, a.modelURL(slug, "view", 0), 302)
 	return
 }

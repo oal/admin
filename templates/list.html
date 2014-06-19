@@ -4,7 +4,10 @@
 		<h2 class="page-title">{{.name}}</h2>
 	</div>
 	<div class="col-sm-5">
-		<a href="new/" class="btn btn-primary pull-right">New <strong>{{.name}}</strong></a>
+		<a href="{{.path}}/new/{{.slug}}" class="btn btn-primary pull-right">
+			<span class="glyphicon glyphicon-plus"></span>
+			New <strong>{{.name}}</strong>
+		</a>
 	</div>
 	<div class="col-sm-2">
 		<form method="get" action=".">
@@ -21,8 +24,10 @@
 					{{range $index, $colName := .colNames}}
 						<th>
 							{{if eq $.sort $colName}}
-								<small class="glyphicon glyphicon-chevron-{{if $.sortDesc}}down{{else}}up{{end}}"></small>
-								<a href="?sort={{if not $.sortDesc}}-{{end}}{{$colName}}{{if $.q}}&q={{$.q}}{{end}}">{{index $.columns $index}}</a>
+								<a href="?sort={{if not $.sortDesc}}-{{end}}{{$colName}}{{if $.q}}&q={{$.q}}{{end}}">
+									<small class="glyphicon glyphicon-chevron-{{if $.sortDesc}}down{{else}}up{{end}}"></small>
+									{{index $.columns $index}}
+								</a>
 							{{else}}
 								<a href="?sort={{$colName}}{{if $.q}}&q={{$.q}}{{end}}">{{index $.columns $index}}</a>
 							{{end}}
@@ -38,7 +43,9 @@
 								<td>{{$col}}</td>
 							{{end}}
 							<td>
-								<a href="edit/{{index $result 0}}" class="btn btn-primary btn-block btn-sm">Edit</a>
+								<a href="{{$.path}}/edit/{{$.slug}}/{{index $result 0}}" class="btn btn-primary btn-block btn-xs">
+									<span class="glyphicon glyphicon-edit"></span> Edit
+								</a>
 							</td>
 						</tr>
 					{{end}}

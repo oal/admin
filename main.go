@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/extemporalgenome/slug"
-	"github.com/gorilla/mux"
+	"github.com/julienschmidt/httprouter"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/oal/admin/db"
 	"github.com/oal/admin/fields"
@@ -18,17 +18,16 @@ import (
 type NameTransformFunc func(string) string
 
 type Admin struct {
-	Router        *mux.Router
-	Path          string
-	Database      string
-	Title         string
-	NameTransform NameTransformFunc
-
+	Path     string
 	Username string
 	Password string
+
 	sessions map[string]*session
 
 	SourceDir string
+
+	title         string
+	nameTransform NameTransformFunc
 
 	db      *sql.DB
 	dialect db.Dialect
@@ -55,10 +54,7 @@ func Setup(admin *Admin) (*Admin, error) {
 		}
 	}
 
-	// Title
-	if len(admin.Title) == 0 {
-		admin.Title = "Admin"
-	}
+	admin.title = "Admin"
 
 	// Users / sessions
 	if len(admin.Username) == 0 || len(admin.Password) == 0 {
@@ -66,22 +62,9 @@ func Setup(admin *Admin) (*Admin, error) {
 	}
 	admin.sessions = map[string]*session{}
 
-	staticDir := fmt.Sprintf("%v/static/", admin.SourceDir)
-	if _, err := os.Stat(staticDir); err != nil {
-		return nil, err
-	}
 	if _, err := os.Stat(fmt.Sprintf("%v/templates/", admin.SourceDir)); err != nil {
 		return nil, err
 	}
-
-	// Database
-	database, err := sql.Open("sqlite3", admin.Database)
-	if err != nil {
-		return nil, err
-	}
-	admin.db = database
-
-	admin.dialect = db.BaseDialect{}
 
 	// Model init
 	admin.models = map[string]*model{}
@@ -90,18 +73,68 @@ func Setup(admin *Admin) (*Admin, error) {
 	admin.missingRels = map[fields.RelationalField]reflect.Type{}
 
 	// Routes
-	sr := admin.Router.PathPrefix(admin.Path).Subrouter()
-	sr.StrictSlash(true)
-	sr.HandleFunc("/", admin.handlerWrapper(admin.handleIndex))
-	sr.HandleFunc("/logout/", admin.handlerWrapper(admin.handleLogout))
-	sr.HandleFunc("/model/{slug}/", admin.handlerWrapper(admin.handleList))
-	sr.HandleFunc("/model/{slug}/new/", admin.handlerWrapper(admin.handleEdit))
-	sr.HandleFunc("/model/{slug}/{view}/", admin.handlerWrapper(admin.handleList))
-	sr.HandleFunc("/model/{slug}/edit/{id}/", admin.handlerWrapper(admin.handleEdit))
-	sr.HandleFunc("/model/{slug}/delete/{id}/", admin.handlerWrapper(admin.handleDelete))
-	sr.PathPrefix("/static/").Handler(http.StripPrefix("/admin/static/", http.FileServer(http.Dir(staticDir))))
 
 	return admin, nil
+}
+
+// SetTitle allows you to change the page title for your admin panel.
+func (a *Admin) SetTitle(title string) {
+	a.title = title
+}
+
+// SetDatabase sets the database the admin connects to.
+func (a *Admin) SetDatabase(driver, source string) error {
+	database, err := sql.Open(driver, source)
+	if err != nil {
+		return err
+	}
+
+	switch driver {
+	case "postgres":
+		a.dialect = db.PostgresDialect{}
+	case "sqlite3", "mysql":
+		a.dialect = db.BaseDialect{}
+	default:
+		return errors.New(fmt.Sprintf("Unknown database driver %v", driver))
+	}
+
+	a.db = database
+	return nil
+}
+
+// SetNameTransformer is optional, and allows you to set a function that model names and field names are sent through
+// to maintain compatibility with an ORM. For example, Beego ORM saves tables/columns in snake_case, while CamelCase
+// is used in Go.
+func (a *Admin) SetNameTransformer(nameFunc NameTransformFunc) {
+	a.nameTransform = nameFunc
+}
+
+// Handler returns a http.Handler that you can attach to any mux to serve the admin.
+func (a *Admin) Handler() (http.Handler, error) {
+	staticDir := fmt.Sprintf("%v/static/", a.SourceDir)
+	if _, err := os.Stat(staticDir); err != nil {
+		return nil, err
+	}
+
+	r := httprouter.New()
+	r.RedirectTrailingSlash = true
+	r.RedirectFixedPath = true
+
+	r.GET(a.Path+"/", a.handlerWrapper(a.handleIndex))
+	r.POST(a.Path+"/", a.handlerWrapper(a.handleIndex))
+	r.GET(a.Path+"/logout/", a.handlerWrapper(a.handleLogout))
+
+	r.GET(a.Path+"/view/:slug/", a.handlerWrapper(a.handleList))
+	r.GET(a.Path+"/view/:slug/:view/", a.handlerWrapper(a.handleList))
+	r.GET(a.Path+"/new/:slug/", a.handlerWrapper(a.handleEdit))
+
+	r.GET(a.Path+"/edit/:slug/:id/", a.handlerWrapper(a.handleEdit))
+	r.POST(a.Path+"/edit/:slug/:id/", a.handlerWrapper(a.handleEdit))
+
+	r.GET(a.Path+"/delete/:slug/:id/", a.handlerWrapper(a.handleDelete))
+	r.ServeFiles(a.Path+"/static/*filepath", http.Dir(staticDir))
+
+	return r, nil
 }
 
 // Group adds a model group to the admin front page.
@@ -123,12 +156,17 @@ func (a *Admin) Group(name string) (*modelGroup, error) {
 	return group, nil
 }
 
-func (a *Admin) modelURL(slug, action string) string {
+func (a *Admin) modelURL(slug, action string, id int) string {
 	if _, ok := a.models[slug]; !ok {
 		return a.Path
 	}
 
-	return fmt.Sprintf("%v/model/%v%v", a.Path, slug, action)
+	// Improve this
+	if action == "view" {
+		return fmt.Sprintf("%v/%v/%v/", a.Path, action, slug)
+	}
+
+	return fmt.Sprintf("%v/%v/%v/%v/", a.Path, action, slug, id)
 }
 
 func loadTemplates(path string) (*template.Template, error) {

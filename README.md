@@ -10,13 +10,8 @@ The code is a bit rough, but feel free to submit pull requests and / or open iss
 If you want to try it in your own app, you can activate like this:
 
 ```go
-router := mux.NewRouter()
 a, err := admin.Setup(&admin.Admin{
-	Title:         "My admin panel",
-	Router:        router,
 	Path:          "/admin",
-	Database:      "db.sqlite",
-	NameTransform: snakeString,
 
 	Username: "admin",
 	Password: "password"
@@ -25,11 +20,20 @@ if err != nil {
 	panic(err)
 }
 
+a.SetTitle("My admin panel")
+a.SetDatabase("sqlite3", "db.sqlite")
+a.SetNameTransformer(snakeString)
+
 g, err := a.Group("Main")
 if err != nil {
 	panic(err)
 }
 g.RegisterModel(new(Page))
+
+handler, err := a.Handler() // Attach handler to any mux to serve the admin panel.
+if err != nil {
+	panic(err)
+}
 ```
 
 A model is just a struct

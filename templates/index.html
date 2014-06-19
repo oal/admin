@@ -7,7 +7,18 @@
 				<div class="panel-heading">{{$group.Name}}</div>
 				<div class="list-group">
 					{{range $group.Models}}
-						<li class="list-group-item"><a href="{{$.path}}/model/{{.Slug}}/">{{.Name}}</a></li>
+						<li class="list-group-item">
+							<a href="{{$.path}}/view/{{.Slug}}/">{{.Name}}</a>
+
+							<div class="btn-group pull-right">
+								<a href="{{$.path}}/new/{{.Slug}}/" class="btn btn-xs btn-primary">
+									<span class="glyphicon glyphicon-plus"></span> Add
+								</a>
+								<a href="{{$.path}}/view/{{.Slug}}/" class="btn btn-xs btn-default">
+									<span class="glyphicon glyphicon-edit"></span> Edit
+								</a>
+							</div>
+						</li>
 					{{end}}
 				</div>
 			</div>

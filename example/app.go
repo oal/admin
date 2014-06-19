@@ -2,7 +2,6 @@ package main
 
 import (
 	"github.com/astaxie/beego/orm"
-	"github.com/gorilla/mux"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/oal/admin"
 	"net/http"
@@ -13,7 +12,7 @@ import (
 type Category struct {
 	Id          int    `orm:"auto"`
 	Title       string `admin:"list search"`
-	Description string `orm:"null" admin:"list blank null default='No description.'"`
+	Description string `admin:"list blank null default='No description.'" orm:"null"`
 }
 
 func (c *Category) SortBy() string {
@@ -21,11 +20,11 @@ func (c *Category) SortBy() string {
 }
 
 type BlogPost struct {
-	Id        int       `orm:"auto" admin:"list"`
-	Category  *Category `orm:"rel(fk)" admin:"list='Title' label='Category' width=2"` // list='Title' is used to show Category.Title instead of Category.Id in list view.
+	Id        int       `orm:"auto"`
+	Category  *Category `admin:"list='Title' label='Category' width=2" orm:"rel(fk)"` // list='Title' is used to show Category.Title instead of Category.Id in list view.
 	Title     string    `admin:"list search width=7"`
 	Photo     string    `admin:"width=3 field='file' upload_to='static/posts'"` // File field
-	Body      string    `orm:"type(text)" admin:"textarea"`
+	Body      string    `admin:"textarea" orm:"type(text)"`
 	Published time.Time `admin:"list width=11"`
 	Draft     bool      `admin:"list width=1"`
 }
@@ -42,30 +41,37 @@ func main() {
 	orm.RunCommand()
 
 	// Admin related
-	router := mux.NewRouter()
-	router.HandleFunc("/", func(rw http.ResponseWriter, req *http.Request) {
-		rw.Write([]byte("Nothing to see here. Visit /admin/ instead."))
-	})
 
 	// Set up atmin
 	a, err := admin.Setup(&admin.Admin{
-		Title:         "Example admin", // Optional. Without it the admin will simply be called "Admin"
-		Router:        router,          // Must be a gorilla mux.Router
-		Path:          "/admin",        // Where you want to access admin, without trailing slash
-		Database:      "db.sqlite",     // Only SQLite is supported at the moment
-		NameTransform: snakeString,     // Optional, but needed here to be compatible with Beego ORM
-		Username:      "admin",
-		Password:      "example",
+		Path:     "/admin", // Where you want to access admin. Absolute path, without trailing slash
+		Username: "admin",
+		Password: "example",
 	})
 	if err != nil {
 		panic(err)
 	}
+	a.SetTitle("Example admin")
+	a.SetDatabase("sqlite3", "db.sqlite")
+	a.SetNameTransformer(snakeString) // Optional, but needed here to be compatible with Beego ORM
+
 	group, err := a.Group("Blog")
 	if err != nil {
 		panic(err)
 	}
 	group.RegisterModel(new(Category))
 	group.RegisterModel(new(BlogPost))
+
+	adminHandler, err := a.Handler()
+	if err != nil {
+		panic(err)
+	}
+
+	router := http.NewServeMux()
+	router.Handle("/admin/", adminHandler)
+	router.HandleFunc("/", func(rw http.ResponseWriter, req *http.Request) {
+		rw.Write([]byte("Nothing to see here. Visit /admin/ instead."))
+	})
 
 	http.ListenAndServe(":8000", router)
 }

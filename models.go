@@ -36,7 +36,7 @@ func (g *modelGroup) RegisterModel(mdl interface{}) error {
 	ind := reflect.Indirect(reflect.ValueOf(mdl))
 
 	name := typeToName(modelType)
-	tableName := typeToTableName(modelType, g.admin.NameTransform)
+	tableName := typeToTableName(modelType, g.admin.nameTransform)
 
 	if named, ok := mdl.(NamedModel); ok {
 		name = named.AdminName()
@@ -114,13 +114,13 @@ func (g *modelGroup) RegisterModel(mdl interface{}) error {
 		if relField, ok := field.(fields.RelationalField); ok {
 			// If column is shown in list view, and a field in related model is set to be listed
 			if listField, ok := tagMap["list"]; ok && len(listField) != 0 {
-				if g.admin.NameTransform != nil {
-					listField = g.admin.NameTransform(listField)
+				if g.admin.nameTransform != nil {
+					listField = g.admin.nameTransform(listField)
 				}
 				relField.SetListColumn(listField)
 			}
 
-			relField.SetRelatedTable(typeToTableName(fieldType, g.admin.NameTransform))
+			relField.SetRelatedTable(typeToTableName(fieldType, g.admin.nameTransform))
 
 			// We also need the field to know what model it's related to
 			if regModel, ok := g.admin.registeredRels[fieldType]; ok {
@@ -133,8 +133,8 @@ func (g *modelGroup) RegisterModel(mdl interface{}) error {
 
 		// Transform struct keys to DB column names if needed
 		var tableField string
-		if g.admin.NameTransform != nil {
-			tableField = g.admin.NameTransform(fieldName)
+		if g.admin.nameTransform != nil {
+			tableField = g.admin.nameTransform(fieldName)
 		} else {
 			tableField = refl.Name
 		}
@@ -301,8 +301,8 @@ func (m *model) get(id int) (map[string]interface{}, error) {
 		}
 
 		// Normal columns will be loaded directly in the main query
-		if m.admin.NameTransform != nil {
-			fieldName = m.admin.NameTransform(fieldName)
+		if m.admin.nameTransform != nil {
+			fieldName = m.admin.nameTransform(fieldName)
 		}
 		cols = append(cols, fieldName)
 	}
@@ -405,8 +405,8 @@ func (m *model) page(page int, search, sortBy string, sortDesc bool) ([][]interf
 
 	if len(sortBy) > 0 {
 		sortCol := sortBy
-		if m.admin.NameTransform != nil {
-			sortCol = m.admin.NameTransform(sortBy)
+		if m.admin.nameTransform != nil {
+			sortCol = m.admin.nameTransform(sortBy)
 		}
 
 		direction := "ASC"
@@ -524,8 +524,8 @@ func (m *model) save(id int, req *http.Request) (map[string]interface{}, map[str
 
 		// Convert to DB version of name and append
 		col := key
-		if m.admin.NameTransform != nil {
-			col = m.admin.NameTransform(key)
+		if m.admin.nameTransform != nil {
+			col = m.admin.nameTransform(key)
 		}
 		if id != 0 {
 			col = fmt.Sprintf("%v = ?", col)

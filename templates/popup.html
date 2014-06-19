@@ -41,9 +41,8 @@
 						<tbody>
 							{{range $result := .results}}
 								<tr>
-									{{range $i, $col := $result}}
-										{{/* First column is always ID, so skip it. */}}
-										{{if ne $i 0}}<td>{{$col}}</td>{{end}}
+									{{range $result}}
+										<td>{{.}}</td>
 									{{end}}
 									<td>
 										<a href="#" class="btn btn-primary btn-block btn-sm btn-use" data-id="{{index $result 0}}">Use</a>
