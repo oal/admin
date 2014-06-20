@@ -367,6 +367,7 @@ func (a *Admin) handleDelete(rw http.ResponseWriter, req *http.Request, ps httpr
 		sess.addMessage("warning", err.Error())
 	}
 
-	http.Redirect(rw, req, a.modelURL(slug, "view", 0), 302)
+	url, _ := a.urls.URL("view", slug)
+	http.Redirect(rw, req, url, 302)
 	return
 }

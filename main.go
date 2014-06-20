@@ -165,16 +165,3 @@ func (a *Admin) Group(name string) (*modelGroup, error) {
 
 	return group, nil
 }
-
-func (a *Admin) modelURL(slug, action string, id int) string {
-	if _, ok := a.models[slug]; !ok {
-		return a.Path
-	}
-
-	// Improve this
-	if action == "view" {
-		return fmt.Sprintf("%v/%v/%v/", a.Path, action, slug)
-	}
-
-	return fmt.Sprintf("%v/%v/%v/%v/", a.Path, action, slug, id)
-}
