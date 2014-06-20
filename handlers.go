@@ -322,14 +322,21 @@ func (a *Admin) handleSave(rw http.ResponseWriter, req *http.Request, ps httprou
 	data, dataErrors, err := model.save(id, req)
 	if err != nil {
 		sess.addMessage("warning", err.Error())
-		http.Redirect(rw, req, a.modelURL(slug, "edit", id), 302)
+
+		// Error && data == nil means no changes were made
+		if data == nil {
+			url, _ := a.urls.URL("edit", slug, id)
+			http.Redirect(rw, req, url, 302)
+		}
 		return data, dataErrors
 	} else {
 		sess.addMessage("success", fmt.Sprintf("%v has been saved.", model.Name))
 		if req.Form.Get("done") == "true" {
-			http.Redirect(rw, req, a.modelURL(slug, "view", 0), 302)
+			url, _ := a.urls.URL("view", slug)
+			http.Redirect(rw, req, url, 302)
 		} else {
-			http.Redirect(rw, req, a.modelURL(slug, "edit", id), 302)
+			url, _ := a.urls.URL("edit", slug, id)
+			http.Redirect(rw, req, url, 302)
 		}
 		return nil, nil
 	}

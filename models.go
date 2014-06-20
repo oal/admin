@@ -460,12 +460,12 @@ func (m *model) save(id int, req *http.Request) (map[string]interface{}, map[str
 	numFields := len(m.fieldNames) - 1 // No need for ID.
 
 	// Get existing data, if any, so we can check what values were changed (existing == nil for new rows)
-	var err error
 	var existing map[string]interface{}
 	if id != 0 {
+		var err error
 		existing, err = m.get(id)
 		if err != nil {
-			panic(err)
+			return nil, nil, err
 		}
 	}
 
@@ -510,7 +510,7 @@ func (m *model) save(id int, req *http.Request) (map[string]interface{}, map[str
 	}
 
 	if hasErrors {
-		return data, dataErrors, nil
+		return data, dataErrors, errors.New("Please correct the errors below.")
 	}
 
 	// Create query only with the changed data
