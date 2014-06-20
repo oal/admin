@@ -87,8 +87,8 @@ func (u *urlConfig) URL(name string, args ...interface{}) (string, error) {
 var templates *template.Template
 
 func (a *Admin) render(rw http.ResponseWriter, req *http.Request, tmpl string, ctx map[string]interface{}) {
-	ctx["title"] = a.title
-	ctx["path"] = a.Path
+	ctx["title"] = a.Title
+	ctx["path"] = a.path
 	ctx["q"] = req.Form.Get("q")
 	if _, ok := ctx["anonymous"]; !ok {
 		ctx["anonymous"] = false
@@ -108,8 +108,8 @@ func (a *Admin) render(rw http.ResponseWriter, req *http.Request, tmpl string, c
 // handlerWrapper is used to redirect to index / log in page.
 func (a *Admin) handlerWrapper(h httprouter.Handle) httprouter.Handle {
 	return func(rw http.ResponseWriter, req *http.Request, params httprouter.Params) {
-		if a.getUserSession(req) == nil && req.URL.Path != a.Path+"/" {
-			http.Redirect(rw, req, a.Path, 302)
+		if a.getUserSession(req) == nil && req.URL.Path != a.path+"/" {
+			http.Redirect(rw, req, a.path, 302)
 			return
 		}
 		h(rw, req, params)
@@ -122,7 +122,7 @@ func (a *Admin) handleIndex(rw http.ResponseWriter, req *http.Request, _ httprou
 			req.ParseForm()
 			ok := a.logIn(rw, req.Form.Get("username"), req.Form.Get("password"))
 			if ok {
-				http.Redirect(rw, req, a.Path, 302)
+				http.Redirect(rw, req, a.path, 302)
 			}
 		}
 		a.render(rw, req, "login.html", map[string]interface{}{
@@ -142,7 +142,7 @@ func (a *Admin) handleLogout(rw http.ResponseWriter, req *http.Request, _ httpro
 	}
 
 	delete(a.sessions, cookie.Value)
-	http.Redirect(rw, req, a.Path, 302)
+	http.Redirect(rw, req, a.path, 302)
 }
 func (a *Admin) handleList(rw http.ResponseWriter, req *http.Request, ps httprouter.Params) {
 	slug := ps.ByName("slug")

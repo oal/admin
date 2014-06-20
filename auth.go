@@ -18,7 +18,7 @@ func (a *Admin) getUserSession(req *http.Request) *session {
 }
 
 func (a *Admin) logIn(rw http.ResponseWriter, username, password string) bool {
-	if username != a.Username || password != a.Password {
+	if username != a.username || password != a.password {
 		return false
 	}
 	sessKey := randString(32)
@@ -30,7 +30,7 @@ func (a *Admin) logIn(rw http.ResponseWriter, username, password string) bool {
 	http.SetCookie(rw, &http.Cookie{
 		Name:  "admin",
 		Value: sessKey,
-		Path:  a.Path,
+		Path:  a.path,
 	})
 	return true
 }

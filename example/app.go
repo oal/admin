@@ -41,19 +41,15 @@ func main() {
 	orm.RunCommand()
 
 	// Admin related
-
-	// Set up atmin
-	a, err := admin.Setup(&admin.Admin{
-		Path:     "/admin", // Where you want to access admin. Absolute path, without trailing slash
-		Username: "admin",
-		Password: "example",
-	})
+	a, err := admin.Setup("/admin", "sqlite3", "db.sqlite")
 	if err != nil {
 		panic(err)
 	}
-	a.SetTitle("Example admin")
-	a.SetDatabase("sqlite3", "db.sqlite")
-	a.SetNameTransformer(snakeString) // Optional, but needed here to be compatible with Beego ORM
+
+	// Override settings as needed
+	a.Title = "Example admin"
+	a.NameTransform = snakeString // Optional, but needed here to be compatible with Beego ORM
+	a.User("admin", "example")    // Username / password to log in.
 
 	group, err := a.Group("Blog")
 	if err != nil {
@@ -62,11 +58,13 @@ func main() {
 	group.RegisterModel(new(Category))
 	group.RegisterModel(new(BlogPost))
 
+	// Get a http.Handler to attach to your router/mux.
 	adminHandler, err := a.Handler()
 	if err != nil {
 		panic(err)
 	}
 
+	// Serve admin.
 	router := http.NewServeMux()
 	router.Handle("/admin/", adminHandler)
 	router.HandleFunc("/", func(rw http.ResponseWriter, req *http.Request) {

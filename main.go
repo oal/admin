@@ -14,23 +14,27 @@ import (
 	"reflect"
 )
 
+// NameTransformFunc is a function that takes the name of a Go struct field and outputs another version of itself.
+// This is used to be compatible with various ORMs. See NameTransform on the Admin struct.
 type NameTransformFunc func(string) string
 
 type Admin struct {
-	Path     string
-	Username string
-	Password string
+	// Title allows you to set a custom title for the admin panel. Default is "Admin".
+	Title string
 
-	sessions map[string]*session
+	// NameTransform is optional, and allows you to set a function that model names and field names are sent through
+	// to maintain compatibility with an ORM. For example, Beego ORM saves tables/columns in snake_case, while CamelCase
+	// is used in Go.
+	NameTransform NameTransformFunc
 
-	SourceDir string
-
-	title         string
-	nameTransform NameTransformFunc
-	urls          *urlConfig
-
-	db      *sql.DB
-	dialect db.Dialect
+	path      string
+	username  string
+	password  string
+	sessions  map[string]*session
+	urls      *urlConfig
+	db        *sql.DB
+	dialect   db.Dialect
+	sourceDir string
 
 	models         map[string]*model
 	modelGroups    []*modelGroup
@@ -38,12 +42,18 @@ type Admin struct {
 	missingRels    map[fields.RelationalField]reflect.Type
 }
 
-// Setup registers page handlers and enables the admin.
-func Setup(admin *Admin) (*Admin, error) {
-	// Source dir / static / templates
-	if len(admin.SourceDir) == 0 {
-		admin.SourceDir = fmt.Sprintf("%v/src/github.com/oal/admin", os.Getenv("GOPATH"))
+// Setup sets up the admin with a "path" prefix (typically /admin) and the name of a database driver and source.
+func Setup(path, dbDriver, dbSource string) (*Admin, error) {
+	admin := &Admin{}
+
+	err := admin.database(dbDriver, dbSource)
+	if err != nil {
+		return nil, err
 	}
+
+	admin.sourceDir = fmt.Sprintf("%v/src/github.com/oal/admin", os.Getenv("GOPATH"))
+	admin.path = path
+	admin.Title = "Admin"
 
 	// Load templates (only once, in case we run multiple admins)
 	if templates == nil {
@@ -56,23 +66,13 @@ func Setup(admin *Admin) (*Admin, error) {
 				}
 				return url
 			},
-		}).ParseGlob(fmt.Sprintf("%v/templates/*.html", admin.SourceDir))
+		}).ParseGlob(fmt.Sprintf("%v/templates/*.html", admin.sourceDir))
 		if err != nil {
 			panic(err)
 		}
 	}
 
-	admin.title = "Admin"
-
-	// Users / sessions
-	if len(admin.Username) == 0 || len(admin.Password) == 0 {
-		return nil, errors.New("Username and/or password is missing")
-	}
 	admin.sessions = map[string]*session{}
-
-	if _, err := os.Stat(fmt.Sprintf("%v/templates/", admin.SourceDir)); err != nil {
-		return nil, err
-	}
 
 	// Model init
 	admin.models = map[string]*model{}
@@ -83,46 +83,39 @@ func Setup(admin *Admin) (*Admin, error) {
 	return admin, nil
 }
 
-// SetTitle allows you to change the page title for your admin panel.
-func (a *Admin) SetTitle(title string) {
-	a.title = title
-}
-
-// SetDatabase sets the database the admin connects to.
-func (a *Admin) SetDatabase(driver, source string) error {
-	database, err := sql.Open(driver, source)
-	if err != nil {
+// SourceDir allows you to override the location in which templates and static content is looked for / served from.
+// If not set, it defaults to $GOPATH/src/github.com/oal/admin. You may also copy "templates" and "static" from there,
+// into your own project, and change SourceDir accordingly.
+func (a *Admin) SourceDir(dir string) error {
+	if _, err := os.Stat(fmt.Sprintf("%v/templates/", dir)); err != nil {
 		return err
 	}
 
-	switch driver {
-	case "postgres":
-		a.dialect = db.PostgresDialect{}
-	case "sqlite3", "mysql":
-		a.dialect = db.BaseDialect{}
-	default:
-		return errors.New(fmt.Sprintf("Unknown database driver %v", driver))
-	}
-
-	a.db = database
+	a.sourceDir = dir
 	return nil
 }
 
-// SetNameTransformer is optional, and allows you to set a function that model names and field names are sent through
-// to maintain compatibility with an ORM. For example, Beego ORM saves tables/columns in snake_case, while CamelCase
-// is used in Go.
-func (a *Admin) SetNameTransformer(nameFunc NameTransformFunc) {
-	a.nameTransform = nameFunc
+// User sets username and password for the admin panel. This will change in the future, when support for custom login backends
+// is implemented. No promises on when that will happen, though.
+func (a *Admin) User(username, password string) error {
+	if len(username) == 0 || len(password) == 0 {
+		return errors.New("Username and/or password is missing")
+	}
+
+	a.username = username
+	a.password = password
+
+	return nil
 }
 
 // Handler returns a http.Handler that you can attach to any mux to serve the admin.
 func (a *Admin) Handler() (http.Handler, error) {
-	staticDir := fmt.Sprintf("%v/static/", a.SourceDir)
+	staticDir := fmt.Sprintf("%v/static/", a.sourceDir)
 	if _, err := os.Stat(staticDir); err != nil {
 		return nil, err
 	}
 
-	urls := newURLConfig(a.Path)
+	urls := newURLConfig(a.path)
 	urls.router.RedirectTrailingSlash = true
 	urls.router.RedirectFixedPath = true
 
@@ -141,7 +134,7 @@ func (a *Admin) Handler() (http.Handler, error) {
 
 	urls.add("delete", "GET", "/delete/:slug/:id/", a.handlerWrapper(a.handleDelete))
 
-	urls.router.ServeFiles(a.Path+"/static/*filepath", http.Dir(staticDir))
+	urls.router.ServeFiles(a.path+"/static/*filepath", http.Dir(staticDir))
 
 	a.urls = urls
 	return urls.router, nil
@@ -164,4 +157,23 @@ func (a *Admin) Group(name string) (*modelGroup, error) {
 	a.modelGroups = append(a.modelGroups, group)
 
 	return group, nil
+}
+
+func (a *Admin) database(driver, source string) error {
+	adminDB, err := sql.Open(driver, source)
+	if err != nil {
+		return err
+	}
+
+	switch driver {
+	case "postgres":
+		a.dialect = db.PostgresDialect{}
+	case "sqlite3", "mysql":
+		a.dialect = db.BaseDialect{}
+	default:
+		return errors.New(fmt.Sprintf("Unknown database driver %v", driver))
+	}
+
+	a.db = adminDB
+	return nil
 }

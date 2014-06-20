@@ -20,30 +20,33 @@ See the example app in /example for a working test app.
 In simple terms, this is how you activate it (likely to change soon):
 
 ```go
-a, err := admin.Setup(&admin.Admin{
-	Path: "/admin",
-
-	Username: "admin",
-	Password: "password"
-})
+// Set up admin
+a, err := admin.Setup("/admin", "sqlite3", "db.sqlite")
 if err != nil {
 	panic(err)
 }
 
-a.SetTitle("My admin panel")
-a.SetDatabase("sqlite3", "db.sqlite")
-a.SetNameTransformer(snakeString)
+// Override settings as needed
+a.Title = "Example admin"
+a.NameTransform = snakeString // Optional, but needed here to be compatible with Beego ORM
+a.User("admin", "example")    // Username / password to log in.
 
-g, err := a.Group("Main")
+group, err := a.Group("Blog")
 if err != nil {
 	panic(err)
 }
-g.RegisterModel(new(Page))
+group.RegisterModel(new(Category))
+group.RegisterModel(new(BlogPost))
 
-handler, err := a.Handler() // Attach handler to any mux to serve the admin panel.
+// Get a http.Handler to attach to your router/mux.
+adminHandler, err := a.Handler()
 if err != nil {
 	panic(err)
 }
+
+// Serve admin.
+router := http.NewServeMux()
+router.Handle("/admin/", adminHandler)
 ```
 
 A model is just a struct
