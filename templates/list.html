@@ -4,7 +4,7 @@
 		<h2 class="page-title">{{.name}}</h2>
 	</div>
 	<div class="col-sm-5">
-		<a href="{{.path}}/new/{{.slug}}" class="btn btn-primary pull-right">
+		<a href="{{ url "new" .slug }}" class="btn btn-primary pull-right">
 			<span class="glyphicon glyphicon-plus"></span>
 			New <strong>{{.name}}</strong>
 		</a>
@@ -43,7 +43,7 @@
 								<td>{{$col}}</td>
 							{{end}}
 							<td>
-								<a href="{{$.path}}/edit/{{$.slug}}/{{index $result 0}}" class="btn btn-primary btn-block btn-xs">
+								<a href="{{with $id := index $result 0}}{{ url "edit" $.slug $id}}{{end}}" class="btn btn-primary btn-block btn-xs">
 									<span class="glyphicon glyphicon-edit"></span> Edit
 								</a>
 							</td>

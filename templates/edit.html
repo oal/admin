@@ -4,20 +4,20 @@
 		<h2 class="page-title">{{if eq .id 0}}New{{else}}Edit{{end}} <strong>{{.name}}</strong></h2>
 	</div>
 	<div class="col-sm-4">
-		<a href="{{.path}}/view/{{.slug}}/" class="btn btn-primary pull-right">Back</a>
+		<a href="{{ url "view" .slug}}" class="btn btn-primary pull-right">Back</a>
 	</div>
 </div>
 <div class="row">
 	<div class="col-xs-12">
 		<div class="well">
-			<form method="post" enctype="multipart/form-data">
+			<form action="{{ if .id}}{{ url "save" .slug .id}}{{else}}{{ url "create" .slug}}{{end}}" method="post" enctype="multipart/form-data">
 				<div class="row">
 				{{.form}}
 				</div>
 				<button name="done" value="true" class="btn btn-primary" type="submit">Save</button>
 				{{if .id}}
 					<button name="done" value="false" class="btn btn-default" type="submit">Save and continue editing</button>
-					<a href="{{.path}}/delete/{{.slug}}/{{.id}}/" class="btn btn-danger pull-right confirm">Delete</a>
+					<a href="{{ url "delete" .slug .id }}" class="btn btn-danger pull-right confirm">Delete</a>
 				{{end}}
 			</form>
 		</div>

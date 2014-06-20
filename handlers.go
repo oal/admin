@@ -39,8 +39,7 @@ func (u *urlConfig) add(name, method string, path string, handler httprouter.Han
 		return errors.New(fmt.Sprintf("Route \"%v\" already exists.", name))
 	}
 
-	pathParts := make([]string, 1, strings.Count(path, ":")+1)
-	pathParts[0] = u.prefix
+	pathParts := make([]string, 0, strings.Count(path, ":"))
 
 	inArg := false
 	endArg := 0
@@ -54,13 +53,10 @@ func (u *urlConfig) add(name, method string, path string, handler httprouter.Han
 			pathParts = append(pathParts, path[endArg:startArg])
 			endArg = i
 		}
-
-		// Add last part, or just a slash. Else if won't work here
 		if i == len(path)-1 {
 			pathParts = append(pathParts, path[endArg:len(path)])
 		}
 	}
-
 	u.routes[name] = &route{name, method, pathParts, handler}
 	u.router.Handle(method, u.prefix+path, handler)
 
@@ -74,10 +70,11 @@ func (u *urlConfig) URL(name string, args ...interface{}) (string, error) {
 	}
 
 	if len(args) != len(route.path)-1 {
-		return "", errors.New(fmt.Sprintf("Needed %v arguments but got %v.", len(route.path)-1, len(args)))
+		return "", errors.New(fmt.Sprintf("Needed %v argument(s) for \"%v\" but got %v.", len(route.path)-1, name, len(args)))
 	}
 
 	var buf bytes.Buffer
+	buf.WriteString(u.prefix)
 	for i, part := range route.path {
 		buf.WriteString(part)
 		if len(args) > i {

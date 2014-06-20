@@ -48,7 +48,15 @@ func Setup(admin *Admin) (*Admin, error) {
 	// Load templates (only once, in case we run multiple admins)
 	if templates == nil {
 		var err error
-		templates, err = loadTemplates(fmt.Sprintf("%v/templates", admin.SourceDir))
+		templates, err = template.New("admin").Funcs(template.FuncMap{
+			"url": func(name string, args ...interface{}) string {
+				url, err := admin.urls.URL(name, args...)
+				if err != nil {
+					fmt.Println(err)
+				}
+				return url
+			},
+		}).ParseGlob(fmt.Sprintf("%v/templates/*.html", admin.SourceDir))
 		if err != nil {
 			panic(err)
 		}
@@ -126,12 +134,16 @@ func (a *Admin) Handler() (http.Handler, error) {
 	urls.add("view2", "GET", "/view/:slug/:view/", a.handlerWrapper(a.handleList))
 
 	urls.add("new", "GET", "/new/:slug/", a.handlerWrapper(a.handleEdit))
+	urls.add("create", "POST", "/create/:slug/", a.handlerWrapper(a.handleEdit))
+
 	urls.add("edit", "GET", "/edit/:slug/:id/", a.handlerWrapper(a.handleEdit))
-	urls.add("save", "POST", "/edit/:slug/:id/", a.handlerWrapper(a.handleEdit))
+	urls.add("save", "POST", "/save/:slug/:id/", a.handlerWrapper(a.handleEdit))
+
 	urls.add("delete", "GET", "/delete/:slug/:id/", a.handlerWrapper(a.handleDelete))
 
 	urls.router.ServeFiles(a.Path+"/static/*filepath", http.Dir(staticDir))
 
+	a.urls = urls
 	return urls.router, nil
 }
 
@@ -165,14 +177,4 @@ func (a *Admin) modelURL(slug, action string, id int) string {
 	}
 
 	return fmt.Sprintf("%v/%v/%v/%v/", a.Path, action, slug, id)
-}
-
-func loadTemplates(path string) (*template.Template, error) {
-	// Pages / views
-	tmpl, err := template.ParseGlob(fmt.Sprintf("%v/*.html", path))
-	if err != nil {
-		return nil, err
-	}
-
-	return tmpl, nil
 }

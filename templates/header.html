@@ -21,7 +21,7 @@
 					<div class="navbar-collapse collapse">
 						{{if eq .anonymous false}}
 							<ul class="nav navbar-nav navbar-right">
-								<li><a href="{{.path}}/logout/">Log out</a></li>
+								<li><a href="{{ url "logout" }}">Log out</a></li>
 							</ul>
 						{{end}}
 					</div>
