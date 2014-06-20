@@ -3,15 +3,25 @@ Admin
 
 Web based admin interface for Go, inspired by Django admin.
 
-It currently only works with SQLite, but Postgres and MySQL support should be easy to implement. See the example app in /example for a working test app.
+### Features
 
-The code is a bit rough, but feel free to submit pull requests and / or open issues in the issue tracker to discuss or report bugs, feature requests etc.
+-   Single user login (TODO: Implement support for custom login / user handlers).
+-   Register and group structs as "models" that map to your database manually or via an ORM.
+-   Set custom attributes via each struct field's tag to choose which columns are shown in lists, searchable etc (see below).
+-   Search, list and sort rows.
+-   Custom formatting of values like time.Time etc.
+-   Override / add custom fields with custom validation, formatting etc (may not work at the moment, but will soon).
+-   Auto generate forms from structs for easy content management. Foreign keys and ManyToMany relationships are supported, as long as target struct is also registered (choose by ID or via popup window).
 
-If you want to try it in your own app, you can activate like this:
+### Example
+
+See the example app in /example for a working test app.
+
+In simple terms, this is how you activate it (likely to change soon):
 
 ```go
 a, err := admin.Setup(&admin.Admin{
-	Path:          "/admin",
+	Path: "/admin",
 
 	Username: "admin",
 	Password: "password"
@@ -50,8 +60,7 @@ type Page struct {
 
 `NameTransform` is a function that takes a string and returns a string. It's used to transform struct field names to database table names. For example, Beego ORM uses snake case versions of struct fields for table / column names, so it'll convert "CompanyEmployee" to "company_employee". This is optional, so if no `NameTransform` is specified, lookups in the database will use the CamelCase versions like in Go.
 
-Struct tag
-----------
+### Struct tags
 
 Additional options can be provided in the `admin` struct tag, as in the example above. If more than one is used, separate them by a single space ` `. Multiple word values must be single quoted. Currently, these are supported:
 
@@ -71,8 +80,7 @@ Additional options can be provided in the `admin` struct tag, as in the example 
 
 This project is still early in development. More documentation and features will be added over time.
 
-Screenshots
------------
+### Screenshots (outdated)
 
 ![List view](/../master/screenshots/list.png?raw=true "List view")
 ![New blog post](/../master/screenshots/new.png?raw=true "New blog post")
