@@ -2,12 +2,90 @@ package admin
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"github.com/julienschmidt/httprouter"
 	"html/template"
 	"net/http"
 	"strconv"
+	"strings"
 )
+
+type route struct {
+	name    string
+	method  string
+	path    []string
+	handler httprouter.Handle
+}
+
+type urlConfig struct {
+	prefix string
+	router *httprouter.Router
+	routes map[string]*route
+}
+
+func newURLConfig(prefix string) *urlConfig {
+	conf := &urlConfig{
+		prefix,
+		httprouter.New(),
+		map[string]*route{},
+	}
+
+	return conf
+}
+
+func (u *urlConfig) add(name, method string, path string, handler httprouter.Handle) error {
+	if _, ok := u.routes[name]; ok {
+		return errors.New(fmt.Sprintf("Route \"%v\" already exists.", name))
+	}
+
+	pathParts := make([]string, 1, strings.Count(path, ":")+1)
+	pathParts[0] = u.prefix
+
+	inArg := false
+	endArg := 0
+	startArg := 0
+	for i, char := range path {
+		if char == ':' {
+			inArg = true
+			startArg = i
+		} else if inArg && char == '/' {
+			inArg = false
+			pathParts = append(pathParts, path[endArg:startArg])
+			endArg = i
+		}
+
+		// Add last part, or just a slash. Else if won't work here
+		if i == len(path)-1 {
+			pathParts = append(pathParts, path[endArg:len(path)])
+		}
+	}
+
+	u.routes[name] = &route{name, method, pathParts, handler}
+	u.router.Handle(method, u.prefix+path, handler)
+
+	return nil
+}
+
+func (u *urlConfig) URL(name string, args ...interface{}) (string, error) {
+	route, ok := u.routes[name]
+	if !ok {
+		return "", errors.New("No such route.")
+	}
+
+	if len(args) != len(route.path)-1 {
+		return "", errors.New(fmt.Sprintf("Needed %v arguments but got %v.", len(route.path)-1, len(args)))
+	}
+
+	var buf bytes.Buffer
+	for i, part := range route.path {
+		buf.WriteString(part)
+		if len(args) > i {
+			fmt.Fprint(&buf, args[i])
+		}
+	}
+	return buf.String(), nil
+}
 
 var templates *template.Template
 

@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/extemporalgenome/slug"
-	"github.com/julienschmidt/httprouter"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/oal/admin/db"
 	"github.com/oal/admin/fields"
@@ -28,6 +27,7 @@ type Admin struct {
 
 	title         string
 	nameTransform NameTransformFunc
+	urls          *urlConfig
 
 	db      *sql.DB
 	dialect db.Dialect
@@ -72,8 +72,6 @@ func Setup(admin *Admin) (*Admin, error) {
 	admin.registeredRels = map[reflect.Type]*model{}
 	admin.missingRels = map[fields.RelationalField]reflect.Type{}
 
-	// Routes
-
 	return admin, nil
 }
 
@@ -116,25 +114,25 @@ func (a *Admin) Handler() (http.Handler, error) {
 		return nil, err
 	}
 
-	r := httprouter.New()
-	r.RedirectTrailingSlash = true
-	r.RedirectFixedPath = true
+	urls := newURLConfig(a.Path)
+	urls.router.RedirectTrailingSlash = true
+	urls.router.RedirectFixedPath = true
 
-	r.GET(a.Path+"/", a.handlerWrapper(a.handleIndex))
-	r.POST(a.Path+"/", a.handlerWrapper(a.handleIndex))
-	r.GET(a.Path+"/logout/", a.handlerWrapper(a.handleLogout))
+	urls.add("index", "GET", "/", a.handlerWrapper(a.handleIndex))
+	urls.add("login", "POST", "/", a.handlerWrapper(a.handleIndex))
+	urls.add("logout", "GET", "/logout/", a.handlerWrapper(a.handleLogout))
 
-	r.GET(a.Path+"/view/:slug/", a.handlerWrapper(a.handleList))
-	r.GET(a.Path+"/view/:slug/:view/", a.handlerWrapper(a.handleList))
-	r.GET(a.Path+"/new/:slug/", a.handlerWrapper(a.handleEdit))
+	urls.add("view", "GET", "/view/:slug/", a.handlerWrapper(a.handleList))
+	urls.add("view2", "GET", "/view/:slug/:view/", a.handlerWrapper(a.handleList))
 
-	r.GET(a.Path+"/edit/:slug/:id/", a.handlerWrapper(a.handleEdit))
-	r.POST(a.Path+"/edit/:slug/:id/", a.handlerWrapper(a.handleEdit))
+	urls.add("new", "GET", "/new/:slug/", a.handlerWrapper(a.handleEdit))
+	urls.add("edit", "GET", "/edit/:slug/:id/", a.handlerWrapper(a.handleEdit))
+	urls.add("save", "POST", "/edit/:slug/:id/", a.handlerWrapper(a.handleEdit))
+	urls.add("delete", "GET", "/delete/:slug/:id/", a.handlerWrapper(a.handleDelete))
 
-	r.GET(a.Path+"/delete/:slug/:id/", a.handlerWrapper(a.handleDelete))
-	r.ServeFiles(a.Path+"/static/*filepath", http.Dir(staticDir))
+	urls.router.ServeFiles(a.Path+"/static/*filepath", http.Dir(staticDir))
 
-	return r, nil
+	return urls.router, nil
 }
 
 // Group adds a model group to the admin front page.
