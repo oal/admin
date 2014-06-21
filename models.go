@@ -549,6 +549,7 @@ func (m *model) save(id int, req *http.Request) (map[string]interface{}, map[str
 		} else {
 			q = m.admin.dialect.Queryf("INSERT INTO %v(%v) VALUES(%v)", m.tableName, strings.Join(changedCols, ", "), valMarks)
 		}
+		fmt.Println(q)
 
 		result, err := m.admin.db.Exec(q, changedData...)
 		if err != nil {

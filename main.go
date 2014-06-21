@@ -42,8 +42,8 @@ type Admin struct {
 	missingRels    map[fields.RelationalField]reflect.Type
 }
 
-// Setup sets up the admin with a "path" prefix (typically /admin) and the name of a database driver and source.
-func Setup(path, dbDriver, dbSource string) (*Admin, error) {
+// New sets up the admin with a "path" prefix (typically /admin) and the name of a database driver and source.
+func New(path, dbDriver, dbSource string) (*Admin, error) {
 	admin := &Admin{}
 
 	err := admin.database(dbDriver, dbSource)
@@ -54,23 +54,6 @@ func Setup(path, dbDriver, dbSource string) (*Admin, error) {
 	admin.sourceDir = fmt.Sprintf("%v/src/github.com/oal/admin", os.Getenv("GOPATH"))
 	admin.path = path
 	admin.Title = "Admin"
-
-	// Load templates (only once, in case we run multiple admins)
-	if templates == nil {
-		var err error
-		templates, err = template.New("admin").Funcs(template.FuncMap{
-			"url": func(name string, args ...interface{}) string {
-				url, err := admin.urls.URL(name, args...)
-				if err != nil {
-					fmt.Println(err)
-				}
-				return url
-			},
-		}).ParseGlob(fmt.Sprintf("%v/templates/*.html", admin.sourceDir))
-		if err != nil {
-			panic(err)
-		}
-	}
 
 	admin.sessions = map[string]*session{}
 
@@ -113,6 +96,23 @@ func (a *Admin) Handler() (http.Handler, error) {
 	staticDir := fmt.Sprintf("%v/static/", a.sourceDir)
 	if _, err := os.Stat(staticDir); err != nil {
 		return nil, err
+	}
+
+	// Load templates (only once, in case we run multiple admins)
+	if templates == nil {
+		var err error
+		templates, err = template.New("admin").Funcs(template.FuncMap{
+			"url": func(name string, args ...interface{}) string {
+				url, err := a.urls.URL(name, args...)
+				if err != nil {
+					fmt.Println(err)
+				}
+				return url
+			},
+		}).ParseGlob(fmt.Sprintf("%v/templates/*.html", a.sourceDir))
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	urls := newURLConfig(a.path)

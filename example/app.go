@@ -40,8 +40,8 @@ func main() {
 	orm.RegisterModel(new(BlogPost))
 	orm.RunCommand()
 
-	// Admin related
-	a, err := admin.Setup("/admin", "sqlite3", "db.sqlite")
+	// Set up admin
+	a, err := admin.New("/admin", "sqlite3", "db.sqlite")
 	if err != nil {
 		panic(err)
 	}

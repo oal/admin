@@ -17,18 +17,16 @@ Web based admin interface for Go, inspired by Django admin.
 
 See the example app in /example for a working test app.
 
-In simple terms, this is how you activate it (likely to change soon):
-
 ```go
 // Set up admin
-a, err := admin.Setup("/admin", "sqlite3", "db.sqlite")
+a, err := admin.New("/admin", "sqlite3", "db.sqlite")
 if err != nil {
 	panic(err)
 }
 
 // Override settings as needed
 a.Title = "Example admin"
-a.NameTransform = snakeString // Optional, but needed here to be compatible with Beego ORM
+a.NameTransform = snakeString // Optional (for ORM support)
 a.User("admin", "example")    // Username / password to log in.
 
 group, err := a.Group("Blog")
