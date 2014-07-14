@@ -34,7 +34,10 @@ func (t *TimeField) Render(w io.Writer, val interface{}, err string, startRow bo
 }
 
 func (t *TimeField) RenderString(val interface{}) template.HTML {
-	return template.HTML(template.HTMLEscapeString(val.(time.Time).Format(t.Format)))
+	if maybeTime, ok := val.(time.Time); ok {
+		return template.HTML(template.HTMLEscapeString(maybeTime.Format(t.Format)))
+	}
+	return template.HTML("")
 }
 
 func (t *TimeField) Validate(val string) (interface{}, error) {
