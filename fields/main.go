@@ -128,7 +128,10 @@ func Validate(field Field, req *http.Request, existing interface{}) (interface{}
 		}
 	}
 
-	if len(rawValue) == 0 {
+	// In POSTed data, a bool / checkbox always has 0 length, so don't treat it as an empty field
+	val, err := field.Validate(rawValue)
+	_, isBool := val.(bool)
+	if len(rawValue) == 0 && !isBool {
 		if field.Attrs().Blank {
 			if field.Attrs().Null {
 				return nil, nil
@@ -139,7 +142,7 @@ func Validate(field Field, req *http.Request, existing interface{}) (interface{}
 		}
 	}
 
-	return field.Validate(rawValue)
+	return val, err
 }
 
 var fieldWrapper = template.Must(template.New("FieldWrapper").Parse(`
