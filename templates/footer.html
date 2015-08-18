@@ -9,6 +9,29 @@
 		</div>
 
 		<script src="{{.path}}/static/js/jquery.min.js"></script>
+		<script>
+		$(function() {
+			$('#submit').on('click', function() {
+				ids = []
+				$(".checkbox input:checked").each(function () { 
+					ids.push($(this).data('id'));
+				})
+				val = ids.join(', ');
+				var r = confirm("Are You sure you want to delete these rows: \n" + val);
+				if (r == true) {
+					id = 0;
+					$(".checkbox input:checked").each(function () { 
+						slug = {{ .slug }}
+						_url = {{ url "delete" .slug 0 }}
+						_url = _url.replace("/0","/" + $(this).data('id'));
+						$.get( _url , function(data, status){
+	    				}); 
+					});
+					location.reload();
+				}
+			});
+		});
+		</script>
 		<script src="{{.path}}/static/js/bootstrap.min.js"></script>
 		<script src="{{.path}}/static/js/admin.js"></script>
 	</body>

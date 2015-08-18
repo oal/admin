@@ -9,6 +9,11 @@ import (
 
 var urlTemplate = template.Must(template.New("template").Parse(`
 	<input id="{{.name}}" name="{{.name}}" type="url" value="{{.value}}" class="form-control" placeholder="http://">
+	{{if .help}}
+		<div class="help text">
+			<pre>{{.help}}</pre>
+		</div>
+	{{end}}
 `))
 
 type URLField struct {

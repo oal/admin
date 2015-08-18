@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Popup</title>
+        <link rel="stylesheet" href="{{.path}}/static/css/bootstrap.min.css">
+        <link rel="stylesheet" href="{{.path}}/static/css/admin.css">
+    </head>
+</html>
+<body>
+    <div class="container-fluid">
+        <div class="navbar navbar-default navbar-fixed-top">
+            <div class="container-fluid">
+                <div class="navbar-header">
+                    <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+                        <span class="sr-only">Toggle navigation</span>
+                        <span class="icon-bar"></span>
+                        <span class="icon-bar"></span>
+                        <span class="icon-bar"></span>
+                    </button>
+                    <a class="navbar-brand" href=".">{{.name}}</a>
+                </div>
+                <div class="navbar-collapse collapse">
+                    <form method="get" action="./multiselect" class="navbar-form navbar-right">
+                        <input type="search" name="q" placeholder="Search..." class="form-control" value="{{.q}}">
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-xs-12">
+                <div class="table-responsive">
+                    <!-- <table class="table table-striped"> -->
+                    <table style="table-layout: fixed; width: 100%"  class="table table-striped">
+                    <thead>
+                        <tr>
+                            {{range $col := .columns}}
+                                <!-- <th>{{$col}}</th> -->
+                                <th style="word-wrap: break-word">{{$col}}</th>
+                            {{end}}
+                            <th style="width: 100px">&nbsp;</th>
+                        </tr>
+                    </thead>
+                        <tbody>
+                            {{range $result := .results}}
+                                <tr>
+                                    {{range $result}}
+                                        <!-- <td>{{.}}</td> -->
+                                        <td style="word-wrap: break-word">{{.}}</td>
+                                    {{end}}
+                                    <td>
+                                    <div class="checkbox">
+                                      <label><input type="checkbox" value="" name="selected_id" data-id="{{index $result 0}}" ></label>
+                                    </div>
+                                
+                                    </td>
+                                </tr>
+                            {{end}}
+                        </tbody>
+                    </table>
+                    <button type="button" class="btn btn-primary" id="submit">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-sm-9">
+            {{if gt .numPages 1}}
+            <ul class="pagination pages-list">
+                {{range .pages}}
+                    <li{{if eq $.page .}} class="active"{{end}}><a href="?page={{.}}{{if $.q}}&q={{$.q}}{{end}}">{{.}}</a></li>
+                {{end}}
+            </ul>
+            {{end}}
+        </div>
+        <div class="col-sm-3 text-right">{{.rows}} objects found.</div>
+    </div>
+    <script src="{{.path}}/static/js/jquery.min.js"></script>
+    <script>
+    $(function() {
+        var opener = window.opener.document;
+        var el = $('#'+window.name, opener);
+        if (!(el.val() === "")) {
+            list = el.val().split(",");
+            for (i=0;i<=list.length;i++) {
+                $('.checkbox input[data-id='+list[i]+']').prop('checked',true);
+            }
+        }   
+
+        var multiple = el.data('multiple');
+        idNums = [];
+        
+        $('.checkbox input').on('click', function() {
+            if (!(el.val() === "")) {
+               idNums = el.val().split(',');
+            } else {
+                idNums = []
+            }
+            idNums = idNums.map(function(a) { return a.trim(); });
+
+            isAdd = $(this).prop('checked');
+            checkboxVal = $(this).data('id').toString();
+            if (isAdd) {
+                idNums.push(checkboxVal);
+            } else {
+                found = false;
+                i=0;
+                while ((!found) && (i<idNums.length)) {
+                  if (idNums[i] == checkboxVal) {
+                    idNums.splice(i, 1);
+                    found = true;
+                  }
+                  i++;
+                }
+            }
+
+            idNums.sort(function (a,b) { 
+                if (parseInt(a) > parseInt(b)) { return 1; } else { return -1;}  
+            });
+            val = idNums.join(', ');
+            el.val(val);
+        });
+
+        $('#submit').on('click', function() {
+             window.close();
+        });
+
+        // $('#submit').on('click', function() {
+        //     // idNums = [];
+        //     $(".checkbox input:checked").each(function () { idNums.push($(this).data('id')); } )
+        //     val = idNums.join(', ');
+    
+        //     el.val(val);
+        //     window.close();
+        // });
+    });
+    </script>
+</body>
+</html>

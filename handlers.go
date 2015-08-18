@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/julienschmidt/httprouter"
 	"html/template"
 	"net/http"
 	"strconv"
 	"strings"
+
+	"github.com/julienschmidt/httprouter"
 )
 
 type route struct {
@@ -98,11 +99,11 @@ func (a *Admin) render(rw http.ResponseWriter, req *http.Request, tmpl string, c
 	if sess != nil {
 		ctx["messages"] = sess.getMessages()
 	}
-
 	err := templates.ExecuteTemplate(rw, tmpl, ctx)
 	if err != nil {
 		fmt.Println(err)
 	}
+
 }
 
 // handlerWrapper is used to redirect to index / log in page.
@@ -156,6 +157,7 @@ func (a *Admin) handleList(rw http.ResponseWriter, req *http.Request, ps httprou
 	// Columns
 	columns := []string{}
 	colNames := []string{}
+
 	for _, field := range model.fields {
 		if field.Attrs().List {
 			columns = append(columns, field.Attrs().Label)
@@ -218,16 +220,20 @@ func (a *Admin) handleList(rw http.ResponseWriter, req *http.Request, ps httprou
 	var tmpl string
 	if view := ps.ByName("view"); view == "popup" {
 		tmpl = "popup.html"
+
+		if strings.Contains(req.URL.String(), "/popup/multiselect") {
+			tmpl = "popup_m2m.html"
+		}
 	} else {
 		tmpl = "list.html"
 	}
 
 	// Page numbers
 	pages := make([]int, int(float64(rows)/25.0+0.5))
+
 	for i, _ := range pages {
 		pages[i] = i + 1
 	}
-
 	a.render(rw, req, tmpl, map[string]interface{}{
 		"name": model.Name,
 		"slug": slug,
@@ -239,7 +245,7 @@ func (a *Admin) handleList(rw http.ResponseWriter, req *http.Request, ps httprou
 
 		"results": strResults,
 
-		"page":     page,
+		"page":     int(page),
 		"numPages": len(pages),
 		"pages":    pages,
 		"rows":     rows,

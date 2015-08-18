@@ -29,18 +29,22 @@ type RelationalField interface {
 	GetListColumn() string
 	SetModelSlug(string)
 	GetModelSlug() string
+	GetRelationTable() string
 }
 
 type BaseField struct {
-	Name         string
-	Label        string
-	DefaultValue interface{}
-	Blank        bool
-	Null         bool
-	ColumnName   string
-	List         bool
-	Searchable   bool
-	Width        int
+	Name          string
+	Label         string
+	DefaultValue  interface{}
+	Blank         bool
+	Null          bool
+	ColumnName    string
+	List          bool
+	Searchable    bool
+	Width         int
+	Right         bool
+	Help          string
+	RelationTable string
 }
 
 func (b *BaseField) Configure(tagMap map[string]string) error {
@@ -68,6 +72,7 @@ func (b *BaseField) BaseRender(w io.Writer, tmpl *template.Template, value inter
 	ctx["name"] = b.Name
 	ctx["value"] = value
 	ctx["error"] = errStr
+	ctx["help"] = b.Help
 	ctx["startrow"] = startRow
 	if b.Width == 0 {
 		b.Width = 12

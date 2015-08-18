@@ -29,11 +29,13 @@
 		<div class="row">
 			<div class="col-xs-12">
 				<div class="table-responsive">
-					<table class="table table-striped">
+					<!-- <table class="table table-striped"> -->
+					<table style="table-layout: fixed; width: 100%"  class="table table-striped">
 					<thead>
 						<tr>
 							{{range $col := .columns}}
-								<th>{{$col}}</th>
+								<th style="word-wrap: break-word">{{$col}}</th>
+								<!-- <th>{{$col}}</th> -->
 							{{end}}
 							<th style="width: 100px">&nbsp;</th>
 						</tr>
@@ -42,7 +44,8 @@
 							{{range $result := .results}}
 								<tr>
 									{{range $result}}
-										<td>{{.}}</td>
+										<!-- <td>{{.}}</td> -->
+										<td style="word-wrap: break-word">{{.}}</td>
 									{{end}}
 									<td>
 										<a href="#" class="btn btn-primary btn-block btn-sm btn-use" data-id="{{index $result 0}}">Use</a>
@@ -55,20 +58,32 @@
 			</div>
 		</div>
 	</div>
-
+	<div class="row">
+        <div class="col-sm-9">
+            {{if gt .numPages 1}}
+            <ul class="pagination pages-list">
+                {{range .pages}}
+                    <li{{if eq $.page .}} class="active"{{end}}><a href="?page={{.}}{{if $.q}}&q={{$.q}}{{end}}">{{.}}</a></li>
+                {{end}}
+            </ul>
+            {{end}}
+        </div>
+        <div class="col-sm-3 text-right">{{.rows}} objects found.</div>
+    </div>
 	<script src="{{.path}}/static/js/jquery.min.js"></script>
 	<script>
 	$(function() {
 		var opener = window.opener.document;
 		var el = $('#'+window.name, opener);
 		var multiple = el.data('multiple');
+		idNums = [];
+
 		$('.btn-use').on('click', function() {
 			var val = $(this).data('id');
 			var existing = el.val();
 
 			if(multiple === true && existing.length > 0) {
 				ids = existing.split(',');
-				idNums = [];
 				for (var i = 0; i < ids.length; i++) {
 					var id = parseInt(ids[i]);
 					if(idNums.indexOf(id) === -1) {

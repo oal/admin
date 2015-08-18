@@ -4,14 +4,15 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/extemporalgenome/slug"
-	"github.com/oal/admin/db"
-	"github.com/oal/admin/fields"
 	"io"
 	"net/http"
 	"reflect"
 	"sort"
 	"strings"
+
+	"github.com/extemporalgenome/slug"
+	"github.com/oal/admin/db"
+	"github.com/oal/admin/fields"
 )
 
 // NamedModel requires an AdminName method to be present, to override the model's displayed name in the admin panel.
@@ -109,7 +110,6 @@ func (g *modelGroup) RegisterModel(mdl interface{}) error {
 			fieldType = fieldType.Elem()
 			kind = fieldType.Kind()
 		}
-
 		// Relationships need some additional data added to them
 		if relField, ok := field.(fields.RelationalField); ok {
 			// If column is shown in list view, and a field in related model is set to be listed
@@ -216,6 +216,10 @@ func applyFieldTags(mdl *model, field fields.Field, tagMap map[string]string) {
 		field.Attrs().Blank = true
 	}
 
+	if tab, ok := tagMap["rel_table"]; ok {
+		field.Attrs().RelationTable = tab
+	}
+
 	if _, ok := tagMap["null"]; ok {
 		field.Attrs().Null = true
 	}
@@ -223,6 +227,14 @@ func applyFieldTags(mdl *model, field fields.Field, tagMap map[string]string) {
 	if _, ok := tagMap["list"]; ok {
 		field.Attrs().List = true
 		mdl.listFields = append(mdl.listFields, field)
+	}
+
+	if help, ok := tagMap["help_text"]; ok {
+		field.Attrs().Help = help
+	}
+
+	if _, ok := tagMap["right"]; ok {
+		field.Attrs().Right = true
 	}
 
 	if _, ok := tagMap["search"]; ok {
@@ -325,9 +337,15 @@ func (m *model) get(id int) (map[string]interface{}, error) {
 			if !ok {
 				continue
 			}
+			table_name := fmt.Sprintf("%v_%v", m.tableName, field.ColumnName)
+			if field.GetRelationTable() != "" {
+				table_name = field.GetRelationTable()
+			}
+
 			relTable := field.GetRelatedTable()
 
-			q := m.admin.dialect.Queryf("SELECT %v_id FROM %v_%v WHERE %v_id = ?", relTable, m.tableName, field.ColumnName, m.tableName)
+			q := m.admin.dialect.Queryf("SELECT %v_id FROM %v WHERE %v_id = ?", relTable, table_name, m.tableName)
+
 			rows, err := m.admin.db.Query(q, id)
 			if err != nil {
 				return nil, err
@@ -358,48 +376,74 @@ func (m *model) page(page int, search, sortBy string, sortDesc bool) ([][]interf
 	// Ugly search. Will fix later.
 	doSearch := false
 	whereStr := ""
-	var searchList []interface{}
+	searchBlock := ""
+	aliasIndex := 1
 	if len(search) > 0 {
-		if len(m.searchableColumns) > 0 {
-			searchCols := make([]string, len(m.searchableColumns))
-			searchList = make([]interface{}, len(searchCols))
-			for i, _ := range searchList {
-				searchList[i] = search
-			}
-			for i, _ := range searchCols {
-				searchCols[i] = fmt.Sprintf("%v.%v LIKE ?", m.tableName, m.searchableColumns[i])
-			}
-			whereStr = fmt.Sprintf("WHERE (%v)", strings.Join(searchCols, " OR "))
-			doSearch = true
-		}
-
+		searchBlock = fmt.Sprintf(" WHERE %v.id IN (SELECT id FROM (SELECT %v.id, ", m.tableName, m.tableName)
 	}
 
 	cols := []string{}
 	tables := []string{m.tableName}
-	fkWhere := []string{}
 	for _, field := range m.fields {
 		if field.Attrs().List {
+			var colSearch string
 			colName := fmt.Sprintf("%v.%v", m.tableName, field.Attrs().ColumnName)
 			if relField, ok := field.(fields.RelationalField); ok && len(relField.GetListColumn()) > 0 {
-				relTable := relField.GetRelatedTable()
-				fkColName := fmt.Sprintf("%v.%v", relTable, relField.GetListColumn())
-				fkWhere = append(fkWhere, fmt.Sprintf("%v = %v.id", colName, relTable))
-				colName = fkColName
-				tables = append(tables, relTable)
+				var fkColName, relTable string
+				if _, ok := field.(*fields.ManyToManyField); ok {
+					relTable = fmt.Sprintf("%v_%v", m.tableName, field.Attrs().ColumnName)
+					if relField.GetRelationTable() != "" {
+						relTable = relField.GetRelationTable()
+					}
+					fkColName = fmt.Sprintf("%v.%v", relField.GetRelatedTable(), relField.GetListColumn())
+					colName = fmt.Sprintf(`(SELECT GROUP_CONCAT(%v) FROM %v JOIN %v ON %v.%v_id = %v.id WHERE %v.%v_id = %v.id) AS "%v.%v"`,
+						fkColName, relTable, relField.GetRelatedTable(), relTable,
+						relField.GetRelatedTable(), relField.GetRelatedTable(),
+						relTable, m.tableName, m.tableName, m.tableName, field.Attrs().ColumnName)
+
+				} else if _, ok := field.(*fields.ForeignKeyField); ok {
+					relTable = relField.GetRelatedTable()
+					fkColName = fmt.Sprintf("%v.%v", relTable, relField.GetListColumn())
+					colName = fmt.Sprintf(`(SELECT GROUP_CONCAT(%v) FROM %v WHERE %v.id = %v.%v) AS "%v.%v"`,
+						fkColName, relTable, relTable, m.tableName, field.Attrs().ColumnName, m.tableName, field.Attrs().ColumnName)
+				}
+				colSearch = fmt.Sprintf(`%v AND %v LIKE "%%%v%%") AS alias%v, `, colName[:strings.LastIndex(colName, ")")], fkColName, search, aliasIndex)
+			} else {
+				// Non relational field:
+				colName = fmt.Sprintf(`%v AS "%v"`, colName, colName)
+				colSearch = fmt.Sprintf(`(SELECT %v.%v FROM %v AS _alias WHERE _alias.id = %v.id AND %v.%v LIKE "%%%v%%") AS alias%v, `,
+					m.tableName, field.Attrs().ColumnName, m.tableName, m.tableName,
+					m.tableName, field.Attrs().ColumnName, search, aliasIndex)
+			}
+			if len(search) > 0 && field.Attrs().Searchable {
+				doSearch = true
+
+				searchBlock += colSearch
+
+				aliasIndex++
+			}
+
+			if len(tables) == 0 {
+				tables = append(tables, m.tableName)
 			}
 			cols = append(cols, colName)
 		}
 	}
 
-	if len(fkWhere) > 0 {
-		if len(whereStr) > 0 {
-			whereStr += fmt.Sprintf(" AND (%v)", strings.Join(fkWhere, " AND "))
-		} else {
-			whereStr = "WHERE " + strings.Join(fkWhere, " AND ")
+	if doSearch {
+		// Chop last comma and space
+		searchBlock = searchBlock[:len(searchBlock)-2]
+		searchBlock += fmt.Sprintf(" FROM %v WHERE (", m.tableName)
+		for i := 1; i < aliasIndex; i++ {
+			searchBlock += fmt.Sprintf(`alias%v != ""`, i)
+			if i < aliasIndex-1 {
+				searchBlock += fmt.Sprintf(" OR ")
+			}
 		}
+		searchBlock += fmt.Sprintf(")))")
+	} else {
+		searchBlock = ""
 	}
-
 	sqlColumns := strings.Join(cols, ", ")
 	sqlTables := strings.Join(tables, ", ")
 
@@ -414,28 +458,31 @@ func (m *model) page(page int, search, sortBy string, sortDesc bool) ([][]interf
 			direction = "DESC"
 		}
 
-		sortBy = fmt.Sprintf(" ORDER BY %v.%v %v", m.tableName, sortCol, direction)
+		sortBy = fmt.Sprintf(` ORDER BY "%v.%v" %v`, m.tableName, sortCol, direction)
 	}
 
-	fromWhere := fmt.Sprintf("FROM %v %v", sqlTables, whereStr)
+	fromWhere := fmt.Sprintf("FROM %v %v%v", sqlTables, whereStr, searchBlock)
+
 	rowQuery := m.admin.dialect.Queryf("SELECT %v %v%v LIMIT %v,%v", sqlColumns, fromWhere, sortBy, page*25, 25)
-	countQuery := m.admin.dialect.Queryf("SELECT COUNT(*) %v", fromWhere)
+	// fmt.Printf("rowQuery: SELECT %v %v%v LIMIT %v,%v\n", sqlColumns, fromWhere, sortBy, page*25, 25)
 
 	var rows *sql.Rows
 	var countRow *sql.Row
+	var countQuery string
 	var err error
 	if doSearch {
-		rows, err = m.admin.db.Query(rowQuery, searchList...)
-		countRow = m.admin.db.QueryRow(countQuery, searchList...)
+		countQuery = m.admin.dialect.Queryf("SELECT COUNT(*) FROM (SELECT %v %v)", sqlColumns, fromWhere)
 	} else {
-		rows, err = m.admin.db.Query(rowQuery)
-		countRow = m.admin.db.QueryRow(countQuery)
+		countQuery = m.admin.dialect.Queryf("SELECT COUNT(*) FROM %v", m.tableName)
 	}
+
+	rows, err = m.admin.db.Query(rowQuery)
+	countRow = m.admin.db.QueryRow(countQuery)
 
 	numRows := 0
 	err = countRow.Scan(&numRows)
 	if err != nil {
-		fmt.Println(err)
+		fmt.Println("SCAN", err)
 	}
 
 	if err != nil {
@@ -560,22 +607,26 @@ func (m *model) save(id int, req *http.Request) (map[string]interface{}, map[str
 		}
 	}
 
-	if m2mChanges {
-		// Insert / update M2M
-		for fieldName, ids := range m2mData {
-			field, _ := m.fieldByName(fieldName).(*fields.ManyToManyField)
-			err := m.saveM2M(id, field, ids)
-			if err != nil {
-				return nil, nil, err
-			}
+	// if m2mChanges {
+	// Insert / update M2M
+	for fieldName, ids := range m2mData {
+		field, _ := m.fieldByName(fieldName).(*fields.ManyToManyField)
+		err := m.saveM2M(id, field, ids)
+		if err != nil {
+			return nil, nil, err
 		}
 	}
+	// }
 
 	return data, dataErrors, nil
 }
 
 func (m *model) saveM2M(id int, field *fields.ManyToManyField, relatedIds []int) error {
 	m2mTable := fmt.Sprintf("%v_%v", m.tableName, field.ColumnName)
+	if field.GetRelationTable() != "" {
+		m2mTable = field.GetRelationTable()
+	}
+
 	toColumn := fmt.Sprintf("%v_id", field.GetRelatedTable())
 	fromColumn := fmt.Sprintf("%v_id", m.tableName)
 
@@ -635,6 +686,9 @@ func (m *model) delete(id int) error {
 	for _, fieldName := range m.fieldNames {
 		if field, ok := m.fieldByName(fieldName).(*fields.ManyToManyField); ok {
 			m2mTable := fmt.Sprintf("%v_%v", m.tableName, field.ColumnName)
+			if field.GetRelationTable() != "" {
+				m2mTable = field.GetRelationTable()
+			}
 			fromColumn := fmt.Sprintf("%v_id", m.tableName)
 			q := m.admin.dialect.Queryf("DELETE FROM %v WHERE %v = ?", m2mTable, fromColumn)
 			m.admin.db.Exec(q, id)

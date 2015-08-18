@@ -11,6 +11,11 @@ import (
 var fileTemplate = template.Must(template.New("template").Parse(`
 	<input id="{{.name}}" name="{{.name}}" type="file">
 	<p>{{if .value}}Existing: {{.value}}{{end}}</p>
+	{{if .help}}
+		<div class="help text">
+			<pre>{{.help}}</pre>
+		</div>
+	{{end}}
 `))
 
 type FileField struct {

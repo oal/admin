@@ -24,3 +24,12 @@ body {
 	padding-top: 10px;
 	padding-bottom: 10px;
 }
+
+.help.text { 
+    width:1000px;
+    font-size:13px;
+}
+
+pre {
+  border:0px;
+}

@@ -9,10 +9,20 @@ import (
 
 var textTemplate = template.Must(template.New("template").Parse(`
 	<input id="{{.name}}" name="{{.name}}" type="text" value="{{.value}}" class="form-control">
+	{{if .help}}
+		<div class="help text">
+			<pre>{{.help}}</pre>
+		</div>
+	{{end}}
 `))
 
 var textareaTemplate = template.Must(template.New("template").Parse(`
 	<textarea id="{{.name}}" name="{{.name}}" class="form-control">{{.value}}</textarea>
+	{{if .help}}
+		<div class="help text">
+			<pre>{{.help}}</pre>
+		</div>
+	{{end}}
 `))
 
 type TextField struct {
