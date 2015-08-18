@@ -8,6 +8,11 @@ import (
 
 var timeTemplate = template.Must(template.New("template").Parse(`
 	<input id="{{.name}}" name="{{.name}}" type="date" value="{{.value}}" class="form-control" placeholder="{{.format}}">
+	{{if .help}}
+		<div class="help text">
+			<pre>{{.help}}</pre>
+		</div>
+	{{end}}
 `))
 
 type TimeField struct {

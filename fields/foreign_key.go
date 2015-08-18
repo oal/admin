@@ -54,3 +54,7 @@ func (f *ForeignKeyField) SetModelSlug(slug string) {
 func (f *ForeignKeyField) GetModelSlug() string {
 	return f.model
 }
+
+func (f *ForeignKeyField) GetRelationTable() string {
+	return ""
+}

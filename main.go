@@ -4,14 +4,15 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/extemporalgenome/slug"
-	_ "github.com/mattn/go-sqlite3"
-	"github.com/oal/admin/db"
-	"github.com/oal/admin/fields"
 	"html/template"
 	"net/http"
 	"os"
 	"reflect"
+
+	"github.com/extemporalgenome/slug"
+	_ "github.com/mattn/go-sqlite3"
+	"github.com/oal/admin/db"
+	"github.com/oal/admin/fields"
 )
 
 // NameTransformFunc is a function that takes the name of a Go struct field and outputs another version of itself.
@@ -124,7 +125,7 @@ func (a *Admin) Handler() (http.Handler, error) {
 	urls.add("logout", "GET", "/logout/", a.handlerWrapper(a.handleLogout))
 
 	urls.add("view", "GET", "/view/:slug/", a.handlerWrapper(a.handleList))
-	urls.add("view2", "GET", "/view/:slug/:view/", a.handlerWrapper(a.handleList))
+	urls.add("view2", "GET", "/view/:slug/:view/*multiselect", a.handlerWrapper(a.handleList))
 
 	urls.add("new", "GET", "/new/:slug/", a.handlerWrapper(a.handleEdit))
 	urls.add("create", "POST", "/create/:slug/", a.handlerWrapper(a.handleEdit))
